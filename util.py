@@ -13,7 +13,7 @@ from sklearn.cluster import KMeans
 from scipy.spatial.distance import cdist
 
 ## data load 
-perform = pd.read_csv('data/2019_performance.csv')
+perform_raw = pd.read_csv('data/2019_performance.csv')
 rating = pd.read_csv('data/2019_rating.csv')
 test = pd.read_csv('data/question.csv')
 
@@ -29,6 +29,8 @@ def del_outlier(x,p):
     tem = x['취급액'].reset_index()
     clf.fit(tem)
     tem['anomaly'] = clf.predict(tem)
-    sns.boxplot(tem[tem['anomaly']==1]['취급액'])
-    dist(tem[tem['anomaly']==1]['취급액'])
     return train[tem['anomaly']==1]
+
+# example
+perform = del_outlier(perform_raw,0.03)
+
