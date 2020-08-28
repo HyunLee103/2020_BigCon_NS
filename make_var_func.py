@@ -5,8 +5,8 @@ import copy
 
 class mk_var():
 
-    def __init__(self):
-        self.data = pd.read_csv('data/2019_performance.csv', encoding='utf-8')
+    def __init__(self,data):
+        self.data = data
         self.rating = pd.read_csv('data/2019_rating.csv',encoding='utf-8')
         
         # str to datetime
@@ -235,4 +235,3 @@ class mk_var():
 
 var = mk_var()
 data = var()
-
