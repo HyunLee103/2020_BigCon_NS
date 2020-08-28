@@ -18,9 +18,11 @@ class mk_var():
         self.info = self.mk_addtional_info()
 
     def mk_addtional_info(self):
-        
+
+        '''
         def mk_order():
             return round(self.data['취급액']/self.data['판매단가'])
+        '''
 
         def mk_show(): # 상품명 기준
             def preprocess(name):
@@ -77,7 +79,7 @@ class mk_var():
             return info['show_id'].map(lambda x: show_rating[x])
             
         info = pd.DataFrame()
-        info['order'] = mk_order()
+        #info['order'] = mk_order()
         info['show_id'] = mk_show()
         info['rating'] = mk_rating()
         info['rating_byshow'] = mk_rating_byshow(info)
@@ -233,5 +235,9 @@ class mk_var():
 
         return self.data
 
-var = mk_var()
-data = var()
+data = pd.read_csv('data/2019_performance.csv', encoding='utf-8')
+data.drop('취급액',axis=1,inplace=True)
+
+# 이름 좀 잘 지어주세요,,
+var = mk_var(data)
+var_for_train = var()
