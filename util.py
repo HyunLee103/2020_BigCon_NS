@@ -1,4 +1,4 @@
--*-coding: utf-8 -*-
+#-*-coding: utf-8 -*-
 
 import pandas as pd
 import numpy as np
@@ -10,7 +10,7 @@ import datetime
 from sklearn.model_selection import cross_val_score
 from scipy.stats import kurtosis
 from scipy.stats import skew
-from sklearn.ensemble import IsolationForest
+from sklearn.ensemble import IsolationForest, ensemble
 from sklearn.cluster import KMeans
 from scipy.spatial.distance import cdist
 from sklearn.linear_model import LogisticRegression
@@ -30,13 +30,11 @@ from sklearn.metrics import mean_squared_error
 from make_var_func import *
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import VotingClassifier
+from sklearn.model_selection import RandomizedSearchCV
+from lightgbm import LGBMClassifier
+from xgboost import XGBClassifier
+from sklearn.ensemble import GradientBoostingClassifier
 
-## data load 
-perform_raw = pd.read_csv('data/2019_performance.csv')
-rating = pd.read_csv('data/2019_rating.csv',encoding='utf-8')
-test = pd.read_csv('data/question.csv')
-
-test = test[test['상품군']!='무형']
 
 ## detect outlier
 """
@@ -72,7 +70,7 @@ def km_clust(x, k):
     return pd.concat([x,Z['kmeans']],axis=1)
 
 
-def main_preprocess(raw_data,drop_rate,k,):
+def preprocess(raw_data,drop_rate,k):
     perform = del_outlier(raw_data,drop_rate)
     perform = reset_index(perform)
     perform = km_clust(perform,k)
@@ -82,164 +80,94 @@ def main_preprocess(raw_data,drop_rate,k,):
     y = perform[['취급액']]
     test_km = test[['방송일시','노출(분)','마더코드','상품코드','상품명','상품군','판매단가']]
     data = pd.concat([X_km,test_km]) # 합쳐서 전처리
-    return data
-    # var = mk_var(data)
-    # data = var()
-    # return data, y, y_km
+    data = reset_index(data)
 
-def get_voting():
-	# define the base models
-    models = list()
-    models.append(('logit',LogisticRegression(random_state=2020,multi_class='multinomial',max_iter=200)))
-    models.append(('lgbm',lgb))
-    models.append(('RF',rf))
-    ensemble = VotingClassifier(estimators = models, voting = 'hard')
-
-	return ensemble
+    var = mk_var(data)
+    data = var()
+    return data, y, y_km
 
 
-def main_modeling(data,y,y_km):
+def modeling(data,y_km):
     ## mk train set
+    data = data.fillna(0)
     X_train = data.iloc[:36250,:]
     X_test = data.iloc[36250:,:]
 
     ## modeling
-    # logistic regression
+    # gbm
     train_features, test_features, train_labels, test_labels = train_test_split(X_train, y_km,random_state=2020)
-    scaler = StandardScaler()
-    train_features = scaler.fit_transform(train_features)
-    test_features = scaler.transform(test_features)
-
-    # poly = PolynomialFeatures(degree = 2, interaction_only=False, include_bias=False)
-    # X_poly = poly.fit_transform(train_features)
-    # X_poly.shape
-    logit = LogisticRegression(random_state=2020,multi_class='multinomial',max_iter=200)
-    logit.fit(train_features,train_labels)
-    logit_score = accuracy_score(logit.predict(test_features),test_labels)
+    gb_model = GradientBoostingClassifier(n_estimators=400,subsample=0.9,learning_rate=0.05,min_samples_split=0.9,criterion='mae',random_state=2020)
+    gb_model.fit(train_features,train_labels)
+    gb_score = accuracy_score(gb_model.predict(test_features),test_labels)
 
     # lgbm
+    nama_ch = {v:k for k,v in enumerate(X_train.columns)}
+    X_train.columns = [nama_ch[x] for x in X_train.columns]
     train_features, test_features, train_labels, test_labels = train_test_split(X_train, y_km,random_state=2020)
-    lgb = LGBMClassifier(n_estimators=2000,learning_rate=0.05,subsample=0.8,colsample_bytree=0.8,random_state=2020,objective='multiclass')
+    lgb = LGBMClassifier(n_estimators=2000,learning_rate=0.04,subsample=0.7,colsample_bytree=0.8,random_state=2020,objective='multiclass')
     lgb.fit(train_features,train_labels,early_stopping_rounds = 100,eval_set = [(test_features,test_labels)],verbose=True)
     lgbm_score = accuracy_score(lgb.predict(test_features),test_labels)
 
-    # rf
-    train_features, test_features, train_labels, test_labels = train_test_split(X_train, y_km,random_state=2020)
-    rf = RandomForestClassifier(n_estimators=500, random_state=2020)
-    rf.fit(train_features, train_labels)
-    rf_score = accuracy_score(rf.predict(test_features),test_labels)
+    # parameter = {'learning_rate':[0.03,0.04,0.05],
+    #         'colsample_bytree':[0.7,0.8,0.9,1.0],
+    #         'subsample':[0.7,0.8,0.9]}
+    # model = RandomizedSearchCV(LGBMClassifier(random_state=2020,n_estimators=2000),parameter,n_iter=50 ,cv=2, n_jobs=3,random_state=2020)
+    # model.fit(train_features,train_labels,early_stopping_rounds = 100,eval_set = [(test_features,test_labels)],verbose=True)
+    # print(model.best_estimator_)
 
-    print('logit : {}, lgbm : {}, RF : {}'.format(logit_score,lgbm_score,rf_score))
+    # xgbm
+    xgb = XGBClassifier(n_estimators=400, random_state=2020,learning_rate=0.04,objective='multi:softmax',subsample=0.9,colsample_bytree=0.9)
+    xgb.fit(train_features, train_labels)
+    xgb_score = accuracy_score(xgb.predict(test_features),test_labels)
 
     # Ensemble
     models = list()
-    models.append(('logit',logit))
-    models.append(('lgbm',lgb))
-    models.append(('RF',rf))
-
+    models.append(('gbm',GradientBoostingClassifier(n_estimators=400,subsample=0.9,learning_rate=0.05,min_samples_split=0.9,criterion='mae',random_state=2020)))
+    models.append(('lgbm',LGBMClassifier(n_estimators=2000,learning_rate=0.04,subsample=0.7,colsample_bytree=0.8,random_state=2020,objective='multiclass')))
+    models.append(('XGB',XGBClassifier(n_estimators=400, random_state=2020,learning_rate=0.04,objective='multi:softmax',subsample=0.9,colsample_bytree=0.9)))
     ensemble = VotingClassifier(estimators = models, voting = 'hard')
 
+    ensemble.fit(train_features,train_labels)
+    ensemble_score = accuracy_score(ensemble.predict(test_features),test_labels)
+
+    print('gbm : {}, lgbm : {}, XGB : {}, Voting : {}'.format(gb_score,lgbm_score,xgb_score,ensemble_score))
+    return lgb, ensemble
 
 
+def mk_trainset(data):
+    data['sales_per'] = np.log1p(data['판매단가'])
+    data.rename(columns={'마더코드':'mcode','상품군':'cate','노출(분)':'length_raw','상품코드':'item_code'},inplace=True)
+    data = pd.get_dummies(data,columns=(['gender','pay','cate','day','hour','hour_gr','min','min_gr','len_gr','mcode_freq_gr']))
+    data['mcode'] = data['mcode'].astype('str').apply(lambda x: x[3:])
+    data['mcode'] = data['mcode'].astype(int)
+    data['item_code'] = data['item_code'].astype('str').apply(lambda x: x[2:])
+    data['item_code'] = data['item_code'].astype(int)
+    data = data.drop(['방송일시','상품명','판매단가'],axis=1)
+    return data
 
+def clustering(data,y_km):
+    X_train = data.iloc[:36250,:]
+    X_test = data.iloc[36250:,:]
+    lgb = LGBMClassifier(n_estimators=1272,learning_rate=0.04,subsample=0.7,colsample_bytree=0.8,random_state=2020,objective='multiclass')
+    nama_ch = {v:k for k,v in enumerate(X_train.columns)}
+    X_train.columns = [nama_ch[x] for x in X_train.columns]
+    lgb.fit(X_train,y_km)
 
+    X_train = data.iloc[:36250,:]
+    X_test = data.iloc[36250:,:]
+    X_test['kmeans'] = lgb.predict(X_test)
+    X_train['kmeans'] = y_km
 
+    X_train_c0 = X_train[X_train['kmeans']==0]
+    X_train_c1 = X_train[X_train['kmeans']==1]
+    X_train_c2 = X_train[X_train['kmeans']==2]
 
+    X_test_c0 = X_test[X_test['kmeans']==0]
+    X_test_c1 = X_test[X_test['kmeans']==1]
+    X_test_c2 = X_test[X_test['kmeans']==2]
 
+    return X_train_c0, X_train_c1, X_train_c2, X_test_c0, X_test_c1, X_test_c2
 
-
-## Feature Engineering
-def g_filter(x):
-    if '여성' in x:
-        return 1
-    elif '남성' in x:
-        return 2
-    else:
-        return 0
-
-def pay_filter(x):
-    if '일시' in x:
-        return 1
-    elif '무이자' in x:
-        return 2
-    else:
-        return 0
-
-train_over0 = data[data['노출(분)']>0]
-name_dic = train_over0['마더코드'].value_counts()
-
-def s(x):
-    try:
-        return name_dic[x]
-    except:
-        return 0
-
-data['gender'] = data['상품명'].apply(g_filter)
-data['pay_cat'] = data['상품명'].apply(pay_filter)
-data['item_cnt'] = data['마더코드'].apply(s)
-
-
-data['판매단가_log'] = np.log1p(data['판매단가'])
-
-data = pd.get_dummies(data,columns=(['방송요일','방송시각','방송시각_그룹','노출(분)_그룹','gender','pay_cat','상품군']))
-
-del data['방송일시']
-del data['상품명']
-del data['판매단가']
-# del data['마더코드']
-# del data['상품코드']
-# del data['노출(분)']
-del data['방송ID']
-# del data['상품코드']
-
-data['마더코드'] = data['마더코드'].astype('str').apply(lambda x: x[3:])
-data['마더코드'] = data['마더코드'].astype(int)
-data['상품코드'] = data['상품코드'].astype('str').apply(lambda x: x[2:])
-data['상품코드'] = data['상품코드'].astype(int)
-# data = data.rename(columns={'판매단가_log':'sale_per_log','상품군_가구':'cate_0','상품군_가전':'cate_1','상품군_건강기능':'cate_2','상품군_농수축':'cate_3','상품군_무형':'cate_4','상품군_생활용품':'cate_5','상품군_속옷':'cate_6','상품군_의류':'cate_7','상품군_이미용':'cate_8','상품군_잡화':'cate_9','상품군_주방':'cate_10','상품군_침구':'cate_11'})
-X_train = data.iloc[:36250,:]
-X_test = data.iloc[36250:,:]
-
-
-
-## modeling
-train_features, test_features, train_labels, test_labels = train_test_split(X_train, y_km,random_state=2020)
-# logistic regression(poly)
-scaler = StandardScaler()
-train_features = scaler.fit_transform(train_features)
-test_features = scaler.transform(test_features)
-
-# poly = PolynomialFeatures(degree = 2, interaction_only=False, include_bias=False)
-# X_poly = poly.fit_transform(train_features)
-# X_poly.shape
-
-model = LogisticRegression(random_state=2020,multi_class='multinomial',max_iter=200)
-model.fit(train_features,train_labels)
-accuracy_score(model.predict(test_features),test_labels)
-
-
-# lgbm
-# feature 이름 바꾸기
-nama_ch = {v:k for k,v in enumerate(X_train.columns)}
-X_train.columns = [nama_ch[x] for x in X_train.columns]
-
-train_features, test_features, train_labels, test_labels = train_test_split(X_train, y_km,random_state=2020)
-lgb = LGBMClassifier(n_estimators=2000,learning_rate=0.05,subsample=0.8,colsample_bytree=0.8,random_state=2020,objective='multiclass')
-lgb.fit(train_features,train_labels,early_stopping_rounds = 100,eval_set = [(test_features,test_labels)],verbose=True)
-accuracy_score(lgb.predict(test_features),test_labels)
-
-feature_imp = pd.DataFrame(sorted(zip(lgb.feature_importances_,data.columns)), columns=['Value','Feature'])
-plt.figure(figsize=(20, 10))
-sns.barplot(x="Value", y="Feature", data=feature_imp.sort_values(by="Value", ascending=False))
-plt.title('LightGBM Features (avg over folds)')
-plt.tight_layout()
-plt.show()
-
-# rf
-train_features, test_features, train_labels, test_labels = train_test_split(X_train, y_km,random_state=2020)
-rf = RandomForestClassifier(n_estimators=500, random_state=2020)
-rf.fit(train_features, train_labels)
-accuracy_score(rf.predict(test_features),test_labels)
 
 # final predict
 def metric(real, pred):
@@ -266,3 +194,4 @@ pred_lgb = model_lgb.predict(test_features)
 
 print(metric(test_labels,pred_xgb), metric(test_labels,pred_lgb))
 perform['취급액']
+
