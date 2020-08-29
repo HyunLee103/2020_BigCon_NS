@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 import copy
+import re
 
 class mk_var():
 
@@ -225,6 +226,61 @@ class mk_var():
 
         return self.data
 
+    def mk_pname_var(self):
+
+        def mk_gender():
+            def check_gender(pname):
+                if ('여성' in pname) or ('여자' in pname):
+                    return 0
+                elif '남성' in pname:
+                    return 1
+                else:
+                    return 2
+                
+            return self.data['상품명'].map(check_gender)
+
+        def mk_pay():
+            def check_pay(pname):
+                if ('일시불' in pname) or ('일)' in pname): # (일), 일) 모두 커버
+                    return 0
+                elif ('무이자' in pname) or ('무)' in pname):
+                    return 1
+                else:
+                    return 2
+
+            return self.data['상품명'].map(check_pay)
+
+        def mk_set():
+            def check_set(pname):
+
+                regex = re.compile('\d+(?![단|도|년|분|구|인])[가-힣]')
+                regex_2 = re.compile('\d박스')
+
+                if ('세트' in pname) or ('SET' in pname) or ('패키지' in pname) or ('+' in pname) \
+                    or (regex.search(pname)) or (regex_2.search(pname)): 
+                    return 1
+
+                else:
+                    return 0
+
+            return self.data['상품명'].map(check_set)
+        
+        def mk_special():
+            def check_special(pname):
+                if ('스페셜' in pname) or ('초특가' in pname) or ('단하루' in pname):
+                    return 1
+                else:
+                    return 0
+
+            return self.data['상품명'].map(check_special)
+
+        self.data['gender'] = mk_gender()
+        self.data['pay'] = mk_pay()
+        self.data['set'] = mk_set()
+        self.data['special'] = mk_special()
+
+        return self.data
+
     def __call__(self):
 
         self.data = self.mk_datetime_var()
@@ -232,6 +288,7 @@ class mk_var():
         self.data = self.mk_mcode_var()
         self.data = self.mk_pcode_var()
         self.data = self.mk_rating_var()
+        self.data = self.mk_pname_var()
 
         return self.data
 
