@@ -113,7 +113,20 @@ class mk_var():
             return self.data['방송일시'].map(lambda x: x.weekday())
 
         def mk_holiday():
-            return self.data['방송일시'].map(lambda x: 1 if x.weekday() > 4 else 0)
+
+            ko_holiday = ['2019-01-01', '2019-02-04', '2019-02-05', '2019-02-06','2019-03-01', '2019-05-06', '2019-06-06', '2019-08-15','2019-09-13', '2019-09-12', '2019-10-03', '2019-10-09', '2019-12-25']
+
+            def check_holiday(date):
+                if date.weekday() > 4:
+                    return 1
+
+                elif str(date.date()) in ko_holiday:
+                    return 1
+
+                else:
+                    return 0
+
+            return self.data['방송일시'].map(check_holiday)
 
         def mk_hour():
             return self.data['방송일시'].map(lambda x: x.hour)
@@ -339,7 +352,6 @@ var = mk_var(data)
 var_for_train = var()
 
 var_for_train.head(3)
-
 
 '''
 info = var.info
