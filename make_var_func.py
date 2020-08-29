@@ -89,6 +89,26 @@ class mk_var():
 
     def mk_datetime_var(self):
 
+        def mk_month():
+            return self.data['방송일시'].map(lambda x: x.month)
+
+        def mk_season():
+
+            def month_grouping(month):
+                if 3<= month <6: # 봄
+                    return 0
+
+                elif 6<= month <9: # 여름
+                    return 1
+
+                elif 9<= month <12: # 가을
+                    return 2
+
+                else: # 겨울
+                    return 3
+
+            return self.data['방송일시'].map(lambda x: month_grouping(x.month))
+
         def mk_day():
             return self.data['방송일시'].map(lambda x: x.weekday())
 
@@ -129,6 +149,8 @@ class mk_var():
 
             return self.data['방송일시'].map(lambda x: min_grouping(x.minute))
         
+        self.data['month'] = mk_month()
+        self.data['season'] = mk_season()
         self.data['day'] = mk_day()
         self.data['holiday'] = mk_holiday()
         self.data['hour'] = mk_hour()
@@ -281,6 +303,22 @@ class mk_var():
 
         return self.data
 
+    '''
+    def mk_order_var(self):
+
+        self.info['방송ID']
+
+        def mk_show_order():
+
+            return 
+
+        
+        self.data['show_order'] = mk_show_order()
+
+        return self.data
+    '''
+
+
     def __call__(self):
 
         self.data = self.mk_datetime_var()
@@ -289,6 +327,7 @@ class mk_var():
         self.data = self.mk_pcode_var()
         self.data = self.mk_rating_var()
         self.data = self.mk_pname_var()
+        #self.data = self.mk_order_var()
 
         return self.data
 
@@ -298,3 +337,54 @@ data.drop('취급액',axis=1,inplace=True)
 # 이름 좀 잘 지어주세요,,
 var = mk_var(data)
 var_for_train = var()
+
+var_for_train.head(3)
+
+
+'''
+info = var.info
+# show_id, rating, rating_byshow, mcode, pcode, 추가)방송일시 
+
+info['방송일시'] = copy.deepcopy(var_for_train['방송일시'])
+
+a = info.groupby('show_id')['방송일시'].apply(lambda x: list(set(x))[::-1]).reset_index(name='방송일시')
+
+a
+
+dic = dict()
+
+def mk_dict(timelist):
+
+    tmp = {time:i for time, i in enumerate(timelist)}
+
+    dic.update(tmp)
+
+    return dic
+
+# 해야할 일
+# 1) 방송ID 예외처리 > 엑셀로 뽑아서 직접
+# 2) 같은 방송 ID 내에서 order 변수
+
+pd.DataFrame(data.loc[:,['상품명','show_id']]).to_csv('방송ID 체크.csv',encoding='euc-kr',index=False)
+
+show_meta.to_csv('data/2019_byshow.csv',encoding='utf-8',index=False)
+
+b = a.loc[0:10,'방송일시'].map(mk_dict)
+dic
+
+info.tail(30)
+
+tmp = self.info.groupby('show_id')['mcode'].apply(lambda x: list(set(x))).reset_index(name='mcode')
+mcode_freq = dict(pd.Series(sum([mcode for mcode in tmp.mcode],[])).value_counts())
+
+
+c = a['방송일시'].map(len)
+len(c[c==1]) # 2942개
+
+data['show_id'] = copy.deepcopy(info['show_id'])
+
+data.groupby('show_id')['상품명'].apply(lambda x: list(x)).reset_index('show_id').to_csv('방송ID 체크.csv',encoding='utf-8')
+
+data.head(100).loc[:,['상품명','show_id']]
+
+'''
