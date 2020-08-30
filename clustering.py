@@ -1,17 +1,11 @@
 from util import *
 
-def mk_trainset(data):
-    data['sales_per'] = np.log1p(data['판매단가'])
-    data.rename(columns={'마더코드':'mcode','상품군':'cate','노출(분)':'length_raw','상품코드':'item_code'},inplace=True)
-    data = pd.get_dummies(data,columns=(['gender','pay','cate','day','hour','hour_gr','min','min_gr','len_gr','mcode_freq_gr']))
-    data['mcode'] = data['mcode'].astype('str').apply(lambda x: x[3:])
-    data['mcode'] = data['mcode'].astype(int)
-    data['item_code'] = data['item_code'].astype('str').apply(lambda x: x[2:])
-    data['item_code'] = data['item_code'].astype(int)
-    data = data.drop(['방송일시','상품명','판매단가'],axis=1)
-    return data
 
 def modeling(data,y_km):
+    """
+    Evaluate clustering accuracy
+    return : models
+    """
     ## mk train set
     data = data.fillna(0)
     X_train = data.iloc[:36250,:]
@@ -57,19 +51,33 @@ def modeling(data,y_km):
     print('gbm : {}, lgbm : {}, XGB : {}, Voting : {}'.format(gb_score,lgbm_score,xgb_score,ensemble_score))
     return lgb, ensemble
 
-# excution
-if '__name__'=='__main__': 
 
-    ## data load 
-    perform_raw = pd.read_csv('data/2019_performance.csv')
-    rating = pd.read_csv('data/2019_rating.csv',encoding='utf-8')
-    test = pd.read_csv('data/question.csv')
 
-    perform_raw.reset_index(inplace=True)
-    perform_raw.rename(columns={'index':'id'})
-    test.reset_index(inplace=True)
-    test.rename(columns={'index':'id'})
+def clustering(data,y_km,y):
+    """
+    make cluster for train and test set using models from return of modeling func.
+    return : clustered dataframe
+    """  
+    X_train = data.iloc[:36250,:]
+    X_test = data.iloc[36250:,:]
+    lgb = LGBMClassifier(n_estimators=1272,learning_rate=0.04,subsample=0.7,colsample_bytree=0.8,random_state=2020,objective='multiclass')
+    nama_ch = {v:k for k,v in enumerate(X_train.columns)}
+    X_train.columns = [nama_ch[x] for x in X_train.columns]
+    lgb.fit(X_train,y_km)
+    
+    X_train = data.iloc[:36250,:]
+    X_test = data.iloc[36250:,:]
+    X_train = pd.concat([X_train,y],axis=1)
 
-    data, y, y_km = preprocess(perform_raw,0.03,3)
-    data = mk_trainset(data)
-    lgb, ensemble = modeling(data,y,y_km)
+    X_test['kmeans'] = lgb.predict(X_test)
+    X_train['kmeans'] = y_km
+
+    X_train_c0 = X_train[X_train['kmeans']==0]
+    X_train_c1 = X_train[X_train['kmeans']==1]
+    X_train_c2 = X_train[X_train['kmeans']==2]
+
+    X_test_c0 = X_test[X_test['kmeans']==0]
+    X_test_c1 = X_test[X_test['kmeans']==1]
+    X_test_c2 = X_test[X_test['kmeans']==2]
+
+    return X_train_c0, X_train_c1, X_train_c2, X_test_c0, X_test_c1, X_test_c2
