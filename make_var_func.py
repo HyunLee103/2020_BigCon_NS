@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.lib.utils import info
 import pandas as pd
 from datetime import datetime, timedelta
 import copy
@@ -20,15 +21,38 @@ class mk_var():
 
     def mk_addtional_info(self):
 
-        '''
-        def mk_order():
-            return round(self.data['취급액']/self.data['판매단가'])
-        '''
-
-        def mk_show(): # 상품명 기준
+        def mk_show_id(): # 상품명 기준
             def preprocess(name):
-                name = name.replace('무이자','')
-                name = name.replace('일시불','')
+
+                # 예외
+
+                if ('보국미니히터' in name) or ('우아미' in name) or ('갓바위' in name) or ('두씽' in name)\
+                    or ('해뜰찬' in name) or ('법성포굴비' in name) or ('쥐치포' in name) or ('공간아트' in name)\
+                    or ('르젠' in name) or ('쿠쿠' in name):
+                    name = 'tmp'
+
+                if ('삼성' in name) and ('도어' in name):
+                    name = 'tmp'
+
+                name = name.replace('휴롬퀵스퀴저','휴롬 퀵스퀴저')
+                name = name.replace('장수흙침대','장수 흙침대')
+                name = name.replace('1+1 국내제조', '국내제조')
+    
+                brands = ['프라다','구찌','버버리','코치','마이클코어스','톰포드', '페라가모', '생로랑', ]
+
+                for brand in brands:
+                    name = name.replace(brand,'명품')
+
+                # 상품명 처리
+                words = ['LG전자','삼성','LG','(일)3인용', '(일)4인용', '(무)3인용', '(무)4인용', '(삼성카드 6월 5%)',\
+                '[1세트]','[2세트]','[SET]','[풀패키지]','[실속패키지]', '(점보특대형)','(점보형)', '(중형)',\
+                '(퀸+퀸)','(킹+싱글)','(퀸+싱글)','(킹사이즈)','(퀸사이즈)','(더블사이즈)','(싱글사이즈)','(싱글+싱글)','(더블+더블)','(더블+싱글)',\
+                '(점보)','(특대)','(대형)','더커진','(1등급)467L_','(1등급)221L_','1세트 ','2세트 ','5세트 ','19년 신제품 ',\
+                'K-SWISS 남성','K-SWISS 여성','(퀸)','(싱글)','[무이자]','[일시불]','(무)','(일)','무)','일)','무이자','일시불']
+
+                for word in words:
+                    name = name.replace(word,'')
+                
                 name = name.strip()
 
                 return name.split(' ')[0]
@@ -80,8 +104,7 @@ class mk_var():
             return info['show_id'].map(lambda x: show_rating[x])
             
         info = pd.DataFrame()
-        #info['order'] = mk_order()
-        info['show_id'] = mk_show()
+        info['show_id'] = mk_show_id()
         info['rating'] = mk_rating()
         info['rating_byshow'] = mk_rating_byshow(info)
 
@@ -288,11 +311,11 @@ class mk_var():
         def mk_set():
             def check_set(pname):
 
-                regex = re.compile('\d+(?![단|도|년|분|구|인])[가-힣]')
+                regex = re.compile('\d+(?![단|도|년|분|구|인|형|등])[가-힣]')
                 regex_2 = re.compile('\d박스')
 
                 if ('세트' in pname) or ('SET' in pname) or ('패키지' in pname) or ('+' in pname) \
-                    or (regex.search(pname)) or (regex_2.search(pname)): 
+                   or ('&' in pname) or (regex.search(pname)) or (regex_2.search(pname)): 
                     return 1
 
                 else:
@@ -302,7 +325,7 @@ class mk_var():
         
         def mk_special():
             def check_special(pname):
-                if ('스페셜' in pname) or ('초특가' in pname) or ('단하루' in pname):
+                if ('할인'in pname ) or ('스페셜' in pname) or ('초특가' in pname) or ('단하루' in pname) or ('파격찬스' in pname) or ('최저가' in pname):
                     return 1
                 else:
                     return 0
@@ -316,22 +339,19 @@ class mk_var():
 
         return self.data
 
-    '''
     def mk_order_var(self):
 
-        self.info['방송ID']
+        self.info['방송일시'] = copy.deepcopy(self.data['방송일시'])
 
-        def mk_show_order():
+        id_datetime = self.info.groupby('show_id')['방송일시'].apply(lambda x: sorted(list(set(x)))).reset_index(name='방송일시')
+        id_datetime = id_datetime['방송일시'].map(lambda x:{time:i for i,time in enumerate(x)})
 
-            return 
-
+        datetime_order = {time:dic[time] for dic in id_datetime for time in dic }
         
-        self.data['show_order'] = mk_show_order()
+        self.data['show_order'] = self.data['방송일시'].map(lambda x: datetime_order[x])
 
         return self.data
-    '''
-
-
+    
     def __call__(self):
 
         self.data = self.mk_datetime_var()
@@ -340,63 +360,27 @@ class mk_var():
         self.data = self.mk_pcode_var()
         self.data = self.mk_rating_var()
         self.data = self.mk_pname_var()
-        #self.data = self.mk_order_var()
+        self.data = self.mk_order_var()
 
         return self.data
 
 data = pd.read_csv('data/2019_performance.csv', encoding='utf-8')
 data.drop('취급액',axis=1,inplace=True)
 
+test = pd.read_csv('data/question.csv',encoding='utf-8')
+test.drop('취급액', axis=1,inplace=True)
+
+data = pd.concat([data,test], ignore_index=True)
+
 # 이름 좀 잘 지어주세요,,
 var = mk_var(data)
-var_for_train = var()
+var_fin = var()
 
-var_for_train.head(3)
+var_fin.head(10)
 
+# 방송ID 재생성 후 csv로
 '''
 info = var.info
-# show_id, rating, rating_byshow, mcode, pcode, 추가)방송일시 
-
-info['방송일시'] = copy.deepcopy(var_for_train['방송일시'])
-
-a = info.groupby('show_id')['방송일시'].apply(lambda x: list(set(x))[::-1]).reset_index(name='방송일시')
-
-a
-
-dic = dict()
-
-def mk_dict(timelist):
-
-    tmp = {time:i for time, i in enumerate(timelist)}
-
-    dic.update(tmp)
-
-    return dic
-
-# 해야할 일
-# 1) 방송ID 예외처리 > 엑셀로 뽑아서 직접
-# 2) 같은 방송 ID 내에서 order 변수
-
-pd.DataFrame(data.loc[:,['상품명','show_id']]).to_csv('방송ID 체크.csv',encoding='euc-kr',index=False)
-
-show_meta.to_csv('data/2019_byshow.csv',encoding='utf-8',index=False)
-
-b = a.loc[0:10,'방송일시'].map(mk_dict)
-dic
-
-info.tail(30)
-
-tmp = self.info.groupby('show_id')['mcode'].apply(lambda x: list(set(x))).reset_index(name='mcode')
-mcode_freq = dict(pd.Series(sum([mcode for mcode in tmp.mcode],[])).value_counts())
-
-
-c = a['방송일시'].map(len)
-len(c[c==1]) # 2942개
-
 data['show_id'] = copy.deepcopy(info['show_id'])
-
-data.groupby('show_id')['상품명'].apply(lambda x: list(x)).reset_index('show_id').to_csv('방송ID 체크.csv',encoding='utf-8')
-
-data.head(100).loc[:,['상품명','show_id']]
-
+pd.DataFrame(data.loc[:,['상품명','show_id']]).to_csv('방송ID 체크3.csv',encoding='euc-kr',index=False)
 '''
