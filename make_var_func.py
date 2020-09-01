@@ -343,15 +343,40 @@ class mk_var():
 
         self.info['방송일시'] = copy.deepcopy(self.data['방송일시'])
 
-        id_datetime = self.info.groupby('show_id')['방송일시'].apply(lambda x: sorted(list(set(x)))).reset_index(name='방송일시')
-        id_datetime = id_datetime['방송일시'].map(lambda x:{time:i for i,time in enumerate(x)})
+        def mk_order():
+            id_date = self.info.groupby('show_id')['방송일시'].apply(lambda x: sorted(list(set(x)))).reset_index(name='방송일시')
+            id_date = id_date['방송일시'].map(lambda x: {time:i for i, time in enumerate(x,1)})
 
-        datetime_order = {time:dic[time] for dic in id_datetime for time in dic }
-        
-        self.data['show_order'] = self.data['방송일시'].map(lambda x: datetime_order[x])
+            date_order = {time:dic[time] for dic in id_date for time in dic}
+
+            return self.data['방송일시'].map(lambda x: date_order[x])
+
+        def mk_norm_order():
+            id_date = self.info.groupby('show_id')['방송일시'].apply(lambda x: sorted(list(set(x)))).reset_index(name='방송일시')
+            id_date = id_date['방송일시'].map(lambda x: {time:i/len(x) for i, time in enumerate(x,1)})
+
+            date_order = {time:dic[time] for dic in id_date for time in dic}
+
+            def order_grouping(order):
+
+                # 3,4,5,6,8등분 존재
+
+                if order < 0.34:
+                    return 0
+
+                elif 0.34 < order <= 0.8:
+                    return 1
+
+                else:
+                    return 2
+
+            return self.data['방송일시'].map(lambda x: order_grouping(date_order[x]))
+
+        self.data['show_order'] = mk_order()
+        self.data['show_norm_order'] = mk_norm_order()
 
         return self.data
-    
+
     def __call__(self):
 
         self.data = self.mk_datetime_var()
@@ -377,6 +402,7 @@ var = mk_var(data)
 var_fin = var()
 
 var_fin.head(10)
+var_fin['show_norm_order'].value_counts() # 16종류
 
 # 방송ID 재생성 후 csv로
 '''
