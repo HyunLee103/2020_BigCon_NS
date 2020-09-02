@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 plt.rc('font', family='NanumBarunGothic')
 from sklearn.ensemble import IsolationForest
-from sklearn.cluster import KMeans, cluster
+from sklearn.cluster import KMeans
 from scipy.spatial.distance import cdist
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
@@ -30,7 +30,12 @@ from lightgbm import LGBMClassifier
 from xgboost import XGBClassifier
 from sklearn.ensemble import GradientBoostingClassifier
 from lightgbm import LGBMRegressor
+from sklearn.preprocessing import LabelEncoder
 
+## load data
+perform_raw = pd.read_csv('data/2019_performance.csv')
+rating = pd.read_csv('data/2019_rating.csv',encoding='utf-8')
+test = pd.read_csv('data/question.csv')
 
 ## detect outlier
 """
@@ -74,6 +79,7 @@ def preprocess(raw_data,drop_rate,k):
     X_km = perform[['방송일시','노출(분)','마더코드','상품코드','상품명','상품군','판매단가']]
     y_km = perform[['kmeans']]
     y = perform[['취급액']]
+    y.rename(columns={'취급액':'sales'},inplace=True)
     test_km = test[['방송일시','노출(분)','마더코드','상품코드','상품명','상품군','판매단가']]
     data = pd.concat([X_km,test_km]) # 합쳐서 전처리
     data = reset_index(data)
@@ -83,19 +89,35 @@ def preprocess(raw_data,drop_rate,k):
     return data, y, y_km
 
 
-def mk_trainset(data):
+def mk_trainset(data,dummy = ['gender','pay','hour_gr','min_gr','len_gr','show_norm_order']):
     """
     select feature to make train set 
+    arg : data, dummy(list that make it one-hot-encoding)
     return : data
     """
     data['sales_per'] = np.log1p(data['판매단가'])
     data.rename(columns={'마더코드':'mcode','상품군':'cate','노출(분)':'length_raw','상품코드':'item_code'},inplace=True)
-    data = pd.get_dummies(data,columns=(['gender','pay','cate','day','hour','hour_gr','min','min_gr','len_gr','mcode_freq_gr']))
+
+    encoder = LabelEncoder()
+    encoder.fit(data['cate'])
+    data['cate'] = encoder.transform(data['cate'])
+
+    all_cate = ['day','hour','min','mcode_freq_gr','show_order','gender','pay','hour_gr','min_gr','len_gr','show_norm_order','cate']
+    left_cate = [x for x in all_cate if x not in dummy]
+
+    if dummy:
+        data = pd.get_dummies(data,columns=(dummy))
+
+    if left_cate != []:
+        for var in left_cate:
+            data[var] = data[var].astype('category')
+
     data['mcode'] = data['mcode'].astype('str').apply(lambda x: x[3:])
     data['mcode'] = data['mcode'].astype(int)
     data['item_code'] = data['item_code'].astype('str').apply(lambda x: x[2:])
     data['item_code'] = data['item_code'].astype(int)
     data = data.drop(['방송일시','상품명','판매단가'],axis=1)
+
     return data
 
 
@@ -103,3 +125,11 @@ def metric(real, pred):
     tem = np.abs(pred - real)/pred
     return tem.mean() * 100
 
+def feature_impo(model,data):
+    feature_imp = pd.DataFrame(sorted(zip(model.feature_importances_,data.columns)), columns=['Value','Feature'])
+    plt.figure(figsize=(20, 10))
+    sns.barplot(x="Value", y="Feature", data=feature_imp.sort_values(by="Value", ascending=False))
+    plt.title('LightGBM Features (avg over folds)')
+    plt.tight_layout()
+    plt.show()
+    plt.savefig('lgbm_importances-01.png')
