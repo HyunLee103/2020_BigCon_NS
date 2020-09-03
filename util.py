@@ -116,7 +116,7 @@ def mk_trainset(data,dummy = ['gender','pay','hour_gr','min_gr','len_gr','show_n
     data['mcode'] = data['mcode'].astype(int)
     data['item_code'] = data['item_code'].astype('str').apply(lambda x: x[2:])
     data['item_code'] = data['item_code'].astype(int)
-    data = data.drop(['방송일시','상품명','판매단가'],axis=1)
+    data = data.drop(['방송일시','상품명','판매단가','length_raw'],axis=1)
 
     return data
 
