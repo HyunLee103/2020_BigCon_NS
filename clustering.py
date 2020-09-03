@@ -60,7 +60,7 @@ def clustering(data,y_km,y):
     """  
     X_train = data.iloc[:36250,:]
     X_test = data.iloc[36250:,:]
-    lgb = LGBMClassifier(n_estimators=1272,learning_rate=0.04,subsample=0.7,colsample_bytree=0.8,random_state=2020,objective='multiclass')
+    lgb = LGBMClassifier(n_estimators=1194,learning_rate=0.045,subsample=0.8,colsample_bytree=0.6,random_state=2020,objective='multiclass')
     nama_ch = {v:k for k,v in enumerate(X_train.columns)}
     X_train.columns = [nama_ch[x] for x in X_train.columns]
     lgb.fit(X_train,y_km)
