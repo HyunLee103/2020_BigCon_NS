@@ -137,7 +137,7 @@ class mk_var():
 
         def mk_holiday():
 
-            ko_holiday = ['2019-01-01', '2019-02-04', '2019-02-05', '2019-02-06','2019-03-01', '2019-05-06', '2019-06-06', '2019-08-15','2019-09-13', '2019-09-12', '2019-10-03', '2019-10-09', '2019-12-25']
+            ko_holiday = ['2019-01-01', '2019-02-04', '2019-02-05', '2019-02-06','2019-03-01', '2019-05-06', '2019-06-06', '2019-08-15','2019-09-13', '2019-09-12', '2019-10-03', '2019-10-09', '2019-12-25', '2020-06-06']
 
             def check_holiday(date):
                 if date.weekday() > 4:
@@ -357,8 +357,10 @@ class mk_var():
 
             date_order = {time:dic[time] for dic in id_date for time in dic}
 
-            def order_grouping(order):
+            return self.data['방송일시'].map(lambda x: round(date_order[x],1))
 
+        def mk_norm_order_grouping():
+            def order_grouping(order):
                 # 3,4,5,6,8등분 존재
 
                 if order < 0.34:
@@ -370,10 +372,12 @@ class mk_var():
                 else:
                     return 2
 
-            return self.data['방송일시'].map(lambda x: order_grouping(date_order[x]))
+            return self.data['show_norm_order'].map(order_grouping)
+
 
         self.data['show_order'] = mk_order()
-        self.data['show_norm_order'] = mk_norm_order()
+        self.data['show_norm_order'] = mk_norm_order() #continuous
+        self.data['show_norm_order_gr'] = mk_norm_order_grouping()
 
         return self.data
 
@@ -410,3 +414,4 @@ info = var.info
 data['show_id'] = copy.deepcopy(info['show_id'])
 pd.DataFrame(data.loc[:,['상품명','show_id']]).to_csv('방송ID 체크3.csv',encoding='euc-kr',index=False)
 '''
+
