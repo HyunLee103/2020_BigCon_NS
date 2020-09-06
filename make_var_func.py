@@ -357,6 +357,10 @@ class mk_var():
 
             date_order = {time:dic[time] for dic in id_date for time in dic}
 
+            return self.data['방송일시'].map(lambda x: date_order[x])
+
+        def mk_norm_order_gr():
+            
             def order_grouping(order):
 
                 # 3,4,5,6,8등분 존재
@@ -370,10 +374,11 @@ class mk_var():
                 else:
                     return 2
 
-            return self.data['방송일시'].map(lambda x: order_grouping(date_order[x]))
+            return self.data['show_norm_order'].map(order_grouping)
 
         self.data['show_order'] = mk_order()
         self.data['show_norm_order'] = mk_norm_order()
+        self.data['show_norm_order_gr'] = mk_norm_order_gr()
 
         return self.data
 

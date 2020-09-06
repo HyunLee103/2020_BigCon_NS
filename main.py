@@ -2,7 +2,7 @@ from util import  load_data, preprocess, mk_trainset, metric
 from clustering import clustering
 from sklearn.model_selection import train_test_split
 from lightgbm import LGBMRegressor
-
+from dim_reduction import train_AE,by_AE,by_PCA
 
 def boosting(X,y,col_sample=0.6,lr=0.04,iter=1500):
     train_features, test_features, train_labels, test_labels = train_test_split(X, y,random_state=2020)
@@ -30,18 +30,19 @@ def predict(data,y,k):
 
     print(f'origin error : {round(origin,2)}%\n\nCluster_0 : {round(c0,2)}%\nCluster_1 : {round(c1,2)}%\nCluster_2 : {round(c2,2)}%\nCluster_3 : {round(c3,2)}%\n\nTotal error : {round(total_error,2)}%')
 
-
 # excution
 if __name__=='__main__': 
     data_path = 'data/'
     perform_raw, rating, test = load_data(data_path)
     data, y, y_km = preprocess(perform_raw,test,0.03,4)
     data = mk_trainset(data)
+
     # lgb, ensemble = modeling(data,y_km)  # only use for tunning cluster model
+    #train_AE(data,30,30) # day, hour, min, mcode_freq_gr, show_order
+    #data= by_AE(data,'AE')
+
     X_train, X_test = clustering(data,y_km,y)
     predict(data,y,4)
-
-
 
 
 """

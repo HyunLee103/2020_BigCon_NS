@@ -81,7 +81,7 @@ def preprocess(train,test,drop_rate,k):
     return data, y, y_km
 
 
-def mk_trainset(data,dummy = ['gender','pay','hour_gr','min_gr','len_gr','show_norm_order']):
+def mk_trainset(data,dummy = ['gender','pay','hour_gr','min_gr','len_gr','show_norm_order_gr','day','hour','min','mcode_freq_gr','show_order']):
     """
     select feature to make train set 
     arg : data, dummy(list that make it one-hot-encoding)
@@ -93,7 +93,8 @@ def mk_trainset(data,dummy = ['gender','pay','hour_gr','min_gr','len_gr','show_n
     encoder = LabelEncoder()
     encoder.fit(data['cate'])
     data['cate'] = encoder.transform(data['cate'])
-    all_cate = ['day','hour','min','mcode_freq_gr','show_order','gender','pay','hour_gr','min_gr','len_gr','show_norm_order','cate']
+
+    all_cate = ['day','hour','min','mcode_freq_gr','show_order','gender','pay','hour_gr','min_gr','len_gr','show_order','show_norm_order_gr','cate']
     left_cate = [x for x in all_cate if x not in dummy]
 
     if dummy:
