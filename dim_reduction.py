@@ -6,6 +6,9 @@ import torch.functional as F
 from torch.utils.data import Dataset,DataLoader
 from sklearn.decomposition import PCA
 
+torch.manual_seed(2020)
+np.random.seed(2020)
+
 class AutoEncoder(nn.Module):
     def __init__(self, hidden_size, input_size):
         super(AutoEncoder, self).__init__()
@@ -28,7 +31,7 @@ class DataFrameDataset(Dataset):
 
     def __getitem__(self,idx):
 
-        return torch.from_numpy(self.data.iloc[idx,:].values)
+        return torch.from_numpy(self.data.iloc[idx,:].astype(np.int16).values)
 
 
 def train_AE(data,components,epochs):
@@ -36,14 +39,14 @@ def train_AE(data,components,epochs):
     reduction_cols = ['day_','hour','min','mcode_freq_gr','show_order']
     columns = [col for col in data.columns for rcol in reduction_cols if rcol in col]
 
-    data = data.loc[:,columns]
+    input = data.loc[:,columns]
 
-    AE = AutoEncoder(components,data.shape[1])
+    AE = AutoEncoder(components,input.shape[1])
 
     criterion = nn.BCELoss()
     optimizer = torch.optim.Adam(AE.parameters())
 
-    data = DataFrameDataset(data)
+    data = DataFrameDataset(input)
 
     dataloader = DataLoader(data,batch_size=64,shuffle=True)
 
@@ -66,21 +69,22 @@ def train_AE(data,components,epochs):
 
             optimizer.step()
 
-        print(f'{epoch}epoch loss: {running_loss/len(dataloader)}')
+        print(f'{epoch}epoch loss: {running_loss/len(dataloader):.3f}')
 
     torch.save(AE.state_dict(),'AE')
 
-    
 def by_AE(data,path='AE'):
     reduction_cols = ['day_','hour','min','mcode_freq_gr','show_order']
     columns = [col for col in data.columns for rcol in reduction_cols if rcol in col]
 
-    AE = AutoEncoder(30,data.shape[1])
-    #AE.load_state_dict(path)
+    input = data.loc[:,columns]
 
-    data = DataFrameDataset(data)
+    AE = AutoEncoder(30,input.shape[1])
+    AE.load_state_dict(torch.load(path))
 
-    dataloader = DataLoader(data,batch_size=64,shuffle=False)
+    input = DataFrameDataset(input)
+
+    dataloader = DataLoader(input,batch_size=64,shuffle=False)
 
     with torch.no_grad():
 
@@ -90,35 +94,27 @@ def by_AE(data,path='AE'):
              
              x = x.float()
 
-             _, hidden = AE(x)
+             _, hidden = AE(x) # hidden 
 
-             hiddens += hidden
+             hiddens.append(hidden.numpy()) # hidden - type) torch.Tensor
+    
+    data.drop(columns,axis=1,inplace=True)
 
-    return pd.DataFrame(hiddens)
+    result = pd.DataFrame([hidden for sets in hiddens for hidden in sets])
+
+    return pd.concat([data,result],axis=1)
 
 def by_PCA(data,components=0.95):
-    pca = PCA(n_components=components)
-    result = pca.fit_transform(data)
-
-    return pd.DataFrame(result)
-
-'''
-def dim_reduction(data,mode,components): 
-    # default) 대상 - day, hour, min, mcode_freq_gr, show_order
-
     reduction_cols = ['day_','hour','min','mcode_freq_gr','show_order']
     columns = [col for col in data.columns for rcol in reduction_cols if rcol in col]
 
-    if mode == 'AE':
-        reduction = by_AE(data.loc[:,columns],components,100)
+    data = data.loc[:,columns]
 
-    elif mode == 'PCA':
-        reduction = by_PCA(data.loc[:,columns],components)
-
-    else:
-        raise NotImplementedError
+    pca = PCA(n_components=components)
+    result = pca.fit_transform(data)
 
     data.drop(columns,axis=1,inplace=True)
 
-    return pd.concat([data,reduction],axis=1)
-'''
+    result = pd.DataFrame(result)
+
+    return pd.concat([data,result],axis=1)
