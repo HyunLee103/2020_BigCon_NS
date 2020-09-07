@@ -39,10 +39,14 @@ if __name__=='__main__':
 
     # lgb, ensemble = modeling(data,y_km)  # only use for tunning cluster model
     
-    # train_AE(data,30,40) # only use for training AE
+    ### newly added ###
+
+    #train_AE(data,8,40) # only use for training AE
     
-    #data = by_AE(data,'AE') 
-    data = by_PCA(data,0.9)
+    data = by_AE(data,8,'AE') 
+    #data = by_PCA(data,0.9)
+
+    ### newly added ###
 
     X_train, X_test = clustering(data,y_km,y)
     predict(data,y,4)

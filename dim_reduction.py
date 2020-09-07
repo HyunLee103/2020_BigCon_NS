@@ -71,16 +71,16 @@ def train_AE(data,components,epochs):
 
         print(f'{epoch}epoch loss: {running_loss/len(dataloader):.3f}')
 
-    torch.save(AE.state_dict(),'AE')
+    torch.save(AE.state_dict(),f'AE_{components}')
 
-def by_AE(data,path='AE'):
+def by_AE(data,components,path='AE'):
     reduction_cols = ['day_','hour','min','mcode_freq_gr','show_order']
     columns = [col for col in data.columns for rcol in reduction_cols if rcol in col]
 
     input = data.loc[:,columns]
 
-    AE = AutoEncoder(30,input.shape[1])
-    AE.load_state_dict(torch.load(path))
+    AE = AutoEncoder(components,input.shape[1])
+    AE.load_state_dict(torch.load(f'{path}_{components}'))
 
     input = DataFrameDataset(input)
 
