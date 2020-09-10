@@ -35,6 +35,10 @@ if __name__=='__main__':
     data_path = 'data/'
     perform_raw, rating, test = load_data(data_path)
     data, y, y_km = preprocess(perform_raw,test,0.03,4)
+    data.reset_index(inplace=True)
+    data.rename(columns={'level_0':'concat_id'},inplace=True)
+    del data['index']
+
     data = mk_trainset(data)
 
     # lgb, ensemble = modeling(data,y_km)  # only use for tunning cluster model

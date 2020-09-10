@@ -46,6 +46,9 @@ def predict_return_value(data,y): # 그냥 우선 4개로 고정,,
 data_path = 'data/'
 perform_raw, rating, test = load_data(data_path) # perform_raw, test에 id 부여 (index > id column으로)
 raw_data, y, y_km = preprocess(perform_raw,test,0.03,4) # 이상치 삭제
+raw_data.reset_index(inplace=True)
+raw_data.rename(columns={'level_0':'concat_id'},inplace=True)
+del raw_data['index']
 
 data = mk_trainset(raw_data)
 X_train, X_test = clustering(data,y_km,y)
@@ -63,3 +66,4 @@ results.drop(['index','sales'],axis=1,inplace=True)
 
 
 
+raw_data.reset_index()

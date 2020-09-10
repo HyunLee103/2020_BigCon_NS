@@ -20,16 +20,14 @@ def reset_index(x):
 ## load data
 def load_data(data_path):
     perform_raw = pd.read_csv(os.path.join(f'{data_path}','2019_performance.csv'))
-    perform_raw = perform_raw[perform_raw['취급액'] !=0]
-    perform_raw = reset_index(perform_raw)
     perform_raw.reset_index(inplace=True)
-    perform_raw.rename(columns={'index':'id'},inplace=True)
+    perform_raw.rename(columns={'index':'raw_id'},inplace=True)
 
     rating = pd.read_csv(os.path.join(f'{data_path}','2019_rating.csv'),encoding='utf-8')
 
     test = pd.read_csv(os.path.join(f'{data_path}','question.csv'))
     test.reset_index(inplace=True)
-    test.rename(columns={'index':'id'},inplace=True)
+    test.rename(columns={'index':'raw_id'},inplace=True)
 
     return perform_raw, rating, test
 
@@ -68,16 +66,17 @@ def preprocess(train,test,drop_rate,k):
     perform = reset_index(perform)
     perform = km_clust(perform,k)
 
-    X_km = perform[['id','방송일시','노출(분)','마더코드','상품코드','상품명','상품군','판매단가']]
+    X_km = perform[['raw_id','방송일시','노출(분)','마더코드','상품코드','상품명','상품군','판매단가']]
     y_km = perform[['kmeans']]
     y = perform[['취급액']]
     y.rename(columns={'취급액':'sales'},inplace=True)
-    test_km = test[['id','방송일시','노출(분)','마더코드','상품코드','상품명','상품군','판매단가']]
+    test_km = test[['raw_id','방송일시','노출(분)','마더코드','상품코드','상품명','상품군','판매단가']]
     data = pd.concat([X_km,test_km]) # 합쳐서 전처리
-    data = reset_index(data)
-
+    data.reset_index(inplace=True)
+    
     var = mk_var(data)
     data = var()
+
     return data, y, y_km
 
 
