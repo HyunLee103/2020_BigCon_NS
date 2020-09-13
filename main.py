@@ -1,59 +1,54 @@
-from util import  load_data, preprocess, mk_trainset, metric
+from lightgbm.callback import early_stopping
+from util import load_data, preprocess, mk_trainset, metric, scoring
 from clustering import clustering
 from sklearn.model_selection import train_test_split
 from lightgbm import LGBMRegressor
 from dim_reduction import train_AE,by_AE,by_PCA
+import pandas as pd
 
-def boosting(X,y,col_sample=0.6,lr=0.04,iter=1500):
-    train_features, test_features, train_labels, test_labels = train_test_split(X, y,random_state=2020)
+
+def boosting(X,y,X_val,y_val,col_sample=0.6,lr=0.04,iter=1500,six=True):
+
     model_lgb = LGBMRegressor(subsample= 0.7, colsample_bytree= col_sample, learning_rate=lr,n_estimators=iter,random_state=2020)
-    model_lgb.fit(train_features,train_labels,early_stopping_rounds = 200,eval_set = [(test_features,test_labels)],verbose=False)
-    pred_lgb = model_lgb.predict(test_features)
-    return metric(test_labels,pred_lgb), len(test_labels)
+    model_lgb.fit(X,y,early_stopping_rounds = 500,eval_set = [(X_val,y_val)],verbose=False)
+    pred_lgb = model_lgb.predict(X_val)
+    
+    res = pd.concat([y_val.reset_index(drop=True),pd.DataFrame(pred_lgb,columns=['pred'])],axis=1)
+    res['score'] = res.apply(lambda x : scoring(x['sales'],x['pred']),axis=1)
+    return res['score'].mean(), len(res)
 
 
-def predict(data,y,k):
-    for i in range(k):
-        globals()[f'X_train_c{i}'] = X_train[X_train['kmeans']==i]
-        globals()[f'X_test_c{i}'] = X_test[X_test['kmeans']==i]
+
+def predict(X_train,val,k,col_sample=0.6,lr=0.04,iter=1500,six=True):
     """
     predict '취급액' score only using train set(perform)
     return : RMAE score for each cluster
     """
-    origin, originlen = boosting(data.drop(['id'],axis=1).iloc[:34317,:],y['sales'])
-    c0, len0 = boosting(X_train_c0.drop(['sales','kmeans','id'],axis=1),X_train_c0['sales'])
-    c1, len1 = boosting(X_train_c1.drop(['sales','kmeans','id'],axis=1),X_train_c1['sales'])
-    c2, len2 =  boosting(X_train_c2.drop(['sales','kmeans','id'],axis=1),X_train_c2['sales'])
-    c3, len3 =  boosting(X_train_c3.drop(['sales','kmeans','id'],axis=1),X_train_c3['sales'])
+    X_train = X_train[X_train['sales']!=0]
 
-    total_error = (c0 * len0 + c1 * len1 + c2 * len2 + c3 *len3)/(len0+len1+len2+len3)
+    origin, originlen = boosting(X_train.drop(['id','sales','kmeans'],axis=1),X_train['sales'],val.drop(['sales','kmeans','id','kmeans_pred'],axis=1),val['sales'],col_sample,lr,iter,six)
+    print(f'origin error : {round(origin,2)}%\n')
 
-    print(f'origin error : {round(origin,2)}%\n\nCluster_0 : {round(c0,2)}%\nCluster_1 : {round(c1,2)}%\nCluster_2 : {round(c2,2)}%\nCluster_3 : {round(c3,2)}%\n\nTotal error : {round(total_error,2)}%')
+    sum = 0
+    total_len = 0
+    for i in range(k):
+        train_tem = X_train[X_train['kmeans']==i]
+        val_tem = val[val['kmeans_pred']==i]
+        score,len = boosting(train_tem.drop(['sales','kmeans','id'],axis=1),train_tem['sales'],val_tem.drop(['sales','kmeans','id','kmeans_pred'],axis=1),val_tem['sales'],col_sample,lr,iter,six)
+        sum += (score * len)
+        total_len += len
+        print(f'Cluster_{i} : {round(score,2)}%\n')
+    print(f'Total error : {round(sum/total_len,2)}%')
 
 # excution
 if __name__=='__main__': 
     data_path = 'data/'
     perform_raw, rating, test = load_data(data_path)
-    data, y, y_km = preprocess(perform_raw,test,0.03,4)
-    data.reset_index(inplace=True)
-    data.rename(columns={'level_0':'concat_id'},inplace=True)
-    del data['index']
+    raw_data, y, y_km = preprocess(perform_raw,test,0.03,3)
+    data = mk_trainset(raw_data)
+    train, val = clustering(data,y_km,y)
+    predict(train,val,5)
 
-    data = mk_trainset(data)
-
-    # lgb, ensemble = modeling(data,y_km)  # only use for tunning cluster model
-    
-    ### newly added ###
-
-    #train_AE(data,8,40) # only use for training AE
-    
-    data = by_AE(data,8,'AE') 
-    #data = by_PCA(data,0.9)
-
-    ### newly added ###
-
-    X_train, X_test = clustering(data,y_km,y)
-    predict(data,y,4)
 
 """
 <cluster 정확도 cv>
