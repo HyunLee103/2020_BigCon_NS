@@ -8,7 +8,7 @@ import re
 class mk_var():
 
     def __init__(self,data):
-        self.data = data
+        self.data = data.copy()
         self.rating = pd.read_csv('data/2019_rating.csv',encoding='utf-8')
         
         # str to datetime

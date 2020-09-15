@@ -108,10 +108,10 @@ def by_PCA(data,components=0.95):
     reduction_cols = ['day_','hour','min','mcode_freq_gr','show_order']
     columns = [col for col in data.columns for rcol in reduction_cols if rcol in col]
 
-    data = data.loc[:,columns]
+    input = data.loc[:,columns]
 
     pca = PCA(n_components=components)
-    result = pca.fit_transform(data)
+    result = pca.fit_transform(input)
 
     data.drop(columns,axis=1,inplace=True)
 

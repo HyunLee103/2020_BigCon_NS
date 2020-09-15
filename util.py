@@ -8,28 +8,22 @@ from sklearn.ensemble import IsolationForest
 from sklearn.cluster import KMeans
 from make_var_func import mk_var
 from sklearn.preprocessing import LabelEncoder
+from sklearn.externals import joblib
 import os
-
-
-## reset index
-def reset_index(x):
-    x = x.reset_index()
-    del x['index']
-    return x
 
 ## load data
 def load_data(data_path):
     perform_raw = pd.read_csv(os.path.join(f'{data_path}','2019_performance.csv'))
-    perform_raw = perform_raw[perform_raw['취급액'] !=0]
-    perform_raw = reset_index(perform_raw)
+    perform_raw = perform_raw[perform_raw['취급액'] != 0]
     perform_raw.reset_index(inplace=True)
     perform_raw.rename(columns={'index':'id'},inplace=True)
-
-    rating = pd.read_csv(os.path.join(f'{data_path}','2019_rating.csv'),encoding='utf-8')
-
+    
     test = pd.read_csv(os.path.join(f'{data_path}','question.csv'))
     test.reset_index(inplace=True)
     test.rename(columns={'index':'id'},inplace=True)
+    test['id'] = test['id'].map(lambda x: x + perform_raw.loc[perform_raw.index[-1],'id'])
+
+    rating = pd.read_csv(os.path.join(f'{data_path}','2019_rating.csv'),encoding='utf-8')
 
     return perform_raw, rating, test
 
@@ -65,8 +59,8 @@ def km_clust(x, k):
 
 def preprocess(train,test,drop_rate,k):
     perform = del_outlier(train,drop_rate)
-    perform = reset_index(perform)
-    perform = km_clust(perform,k)
+    perform.reset_index(inplace=True, drop=True)
+    perform = km_clust(perform,k) # kmeans column 생김.
 
     X_km = perform[['id','방송일시','노출(분)','마더코드','상품코드','상품명','상품군','판매단가']]
     y_km = perform[['kmeans']]
@@ -74,7 +68,7 @@ def preprocess(train,test,drop_rate,k):
     y.rename(columns={'취급액':'sales'},inplace=True)
     test_km = test[['id','방송일시','노출(분)','마더코드','상품코드','상품명','상품군','판매단가']]
     data = pd.concat([X_km,test_km]) # 합쳐서 전처리
-    data = reset_index(data)
+    data.reset_index(inplace=True, drop=True)
 
     var = mk_var(data)
     data = var()
@@ -94,6 +88,8 @@ def mk_trainset(data,dummy = ['gender','pay','hour_gr','min_gr','len_gr','show_n
     encoder.fit(data['cate'])
     data['cate'] = encoder.transform(data['cate'])
 
+    joblib.dump(encoder, 'cate_encoder.pkl')
+
     all_cate = ['day','hour','min','mcode_freq_gr','show_order','gender','pay','hour_gr','min_gr','len_gr','show_order','show_norm_order_gr','cate']
     left_cate = [x for x in all_cate if x not in dummy]
 
@@ -112,11 +108,9 @@ def mk_trainset(data,dummy = ['gender','pay','hour_gr','min_gr','len_gr','show_n
 
     return data
 
-
 def metric(real, pred):
     tem = np.abs(pred - real)/pred
     return tem.mean() * 100
-
 
 def feature_impo(model,data):
     feature_imp = pd.DataFrame(sorted(zip(model.feature_importances_,data.columns)), columns=['Value','Feature'])
