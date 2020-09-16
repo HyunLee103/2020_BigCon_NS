@@ -38,7 +38,7 @@ def load_data(data_path,weather=False,trend=False):
 
     test.reset_index(inplace=True)
     test.rename(columns={'index':'id'},inplace=True)
-    test['id'] = test['id'] + 37372
+    test['id'] = test['id'].map(lambda x: x + perform_raw.loc[perform_raw.index[-1],'id'])
 
     return perform_raw, rating, test
 
