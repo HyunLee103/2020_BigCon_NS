@@ -8,7 +8,7 @@ import re
 class mk_var():
 
     def __init__(self,data):
-        self.data = data
+        self.data = data.copy()
         self.rating = pd.read_csv('data/2019_rating.csv',encoding='utf-8')
         
         # str to datetime
@@ -24,7 +24,11 @@ class mk_var():
         def mk_show_id(): # 상품명 기준
             def preprocess(name):
 
-                # 예외
+                # 예외 처리
+                
+                name = name.replace('휴롬퀵스퀴저','휴롬 퀵스퀴저')
+                name = name.replace('장수흙침대','장수 흙침대')
+                name = name.replace('1+1 국내제조', '국내제조')
 
                 if ('보국미니히터' in name) or ('우아미' in name) or ('갓바위' in name) or ('두씽' in name)\
                     or ('해뜰찬' in name) or ('법성포굴비' in name) or ('쥐치포' in name) or ('공간아트' in name)\
@@ -33,10 +37,6 @@ class mk_var():
 
                 if ('삼성' in name) and ('도어' in name):
                     name = 'tmp'
-
-                name = name.replace('휴롬퀵스퀴저','휴롬 퀵스퀴저')
-                name = name.replace('장수흙침대','장수 흙침대')
-                name = name.replace('1+1 국내제조', '국내제조')
     
                 brands = ['프라다','구찌','버버리','코치','마이클코어스','톰포드', '페라가모', '생로랑', ]
 
