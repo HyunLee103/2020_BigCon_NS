@@ -7,6 +7,7 @@ from dim_reduction import train_AE,by_AE,by_PCA
 import pandas as pd
 
 
+
 def boosting(X,y,X_val,y_val,col_sample=0.6,lr=0.04,iter=1500,six=True):
 
     model_lgb = LGBMRegressor(subsample= 0.7, colsample_bytree= col_sample, learning_rate=lr,n_estimators=iter,random_state=2020)
@@ -43,8 +44,10 @@ def predict(X_train,val,k,col_sample=0.6,lr=0.04,iter=1500,six=True):
 # excution
 if __name__=='__main__': 
     data_path = 'data/'
-    perform_raw, rating, test = load_data(data_path)
-    raw_data, y, y_km = preprocess(perform_raw,test,0.03,3)
+    perform_raw, rating, test_raw = load_data(data_path)
+    train, test, y, y_km = preprocess(perform_raw,test_raw,0.03,3,inner=False) # train, test 받아서 쓰면 돼
+
+
     data = mk_trainset(raw_data)
     train, val = clustering(data,y_km,y)
     predict(train,val,5)

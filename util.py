@@ -38,7 +38,7 @@ def load_data(data_path,weather=False,trend=False):
 
     test.reset_index(inplace=True)
     test.rename(columns={'index':'id'},inplace=True)
-    test['id'] = test['id'].map(lambda x: x + perform_raw.loc[perform_raw.index[-1],'id'])
+    test['id'] = test['id'] + 37372
 
     return perform_raw, rating, test
 
@@ -79,10 +79,10 @@ def km_clust(x, k, var=['취급액'],inner=3):
         km = KMeans(n_clusters=inner,random_state=2020)
         km.fit(K)
         object['labels'] = km.labels_
-        object['kmeans'][object['labels']==0]= 1
-        object['kmeans'][object['labels']==1]= 3
-        object['kmeans'][object['labels']==2]= 4
-        object.drop(['labels'],axis=1,inplace=True)
+        object['kmeans'][object['labels']==0] = 1
+        object['kmeans'][object['labels']==1] = 3
+        object['kmeans'][object['labels']==2] = 4    
+        object.drop(['labels'],axis=1,inplace=True) 
         object.set_index('index')
         left.set_index('index')
         res = pd.concat([object.set_index('index'),left.set_index('index')]).sort_index()
@@ -92,22 +92,31 @@ def km_clust(x, k, var=['취급액'],inner=3):
         return pd.concat([x,Z['kmeans']],axis=1)
 
 
-def preprocess(train,test,drop_rate,k):
-    perform = del_outlier(train,drop_rate)
-    perform.reset_index(drop=True, inplace=True)
-    perform = km_clust(perform, k, inner=3)
-    X_km = perform.drop(['kmeans','취급액'],axis=1)
-    y_km = perform[['kmeans']]
-    y = perform[['취급액']]
-    y.rename(columns={'취급액':'sales'},inplace=True)
-    test_km = test.drop(['취급액'],axis=1)
-    data = pd.concat([X_km,test_km]) # 합쳐서 전처리
+def preprocess(perform,question,drop_rate,k,inner=False):
+    data = pd.concat([perform,question])
     data.reset_index(inplace=True,drop=True)
-    
     var = mk_var(data)
     data = var()
+    train = data.iloc[:37372,:]
+    test = data.iloc[37372:,:]
+    test.reset_index(inplace=True,drop=True)
+    train.reset_index(inplace=True,drop=True)
 
-    return data, y, y_km
+    train = train[train['취급액']!=0]
+    train.reset_index(inplace=True,drop=True)
+
+    train = del_outlier(train,drop_rate)
+    train.reset_index(inplace=True,drop=True)
+
+    train = km_clust(train,k,inner=inner)
+    train.rename(columns={'취급액':'sales'},inplace=True)
+    test.rename(columns={'취급액':'sales'},inplace=True)
+
+    y = train[['sales']]
+    y_km = train[['kmeans']]
+    train = train.drop(['kmeans'],axis=1)
+
+    return train, test, y, y_km
 
 
 def mk_trainset(data,dummy = ['gender','pay','hour_gr','min_gr','len_gr','show_norm_order_gr']):
