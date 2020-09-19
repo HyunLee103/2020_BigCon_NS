@@ -5,6 +5,8 @@ from datetime import datetime, timedelta
 import copy
 import re
 
+from torch import triangular_solve
+
 class mk_var():
 
     def __init__(self,data):
@@ -169,6 +171,24 @@ class mk_var():
                     return 4
             
             return self.data['방송일시'].map(lambda x: hour_grouping(x.hour))
+
+        def mk_hour_prime():
+            # prime 시간대 - 오후 9시,10시,11시 + 주말 오후 6시,7시,8시 + 일요일 오전 10시,11시
+            def hour_prime(day,hour):
+            
+                if 21 <= hour <= 23:
+                    return 1
+
+                elif (5 <= day <=6) and (18 <= hour <= 20):
+                    return 1
+
+                elif (5 <= day <= 6) and (10<= hour <= 11):
+                    return 1
+
+                else:
+                    return 0
+
+            return self.data['방송일시'].map(lambda x: hour_prime(x.weekday(),x.hour))   
         
         def mk_min():
             return self.data['방송일시'].map(lambda x: x.minute)
@@ -191,6 +211,7 @@ class mk_var():
         self.data['holiday'] = mk_holiday()
         self.data['hour'] = mk_hour()
         self.data['hour_gr'] = mk_hour_group()
+        self.data['hour_prime'] = mk_hour_prime()
         self.data['min'] = mk_min()
         self.data['min_gr'] = mk_min_group()
 
@@ -394,3 +415,62 @@ class mk_var():
 
         return self.data
 
+# ~ 별 평균, 분산, 비율, 중위수, rank
+class mk_stat_var():
+    def __init__(self,train,test):
+        self.train = train.copy() # 34317
+        self.test = test.copy() # 2891
+        self.data = pd.concat([train,test]).reset_index(drop=True) # 37208
+
+    def mk_cate_var(self):
+
+        sales = self.train.groupby('상품군')['sales'].describe()[['mean','std','50%']]
+        sales.rename(columns={'mean':'cate_sales_mean', 'std':'cate_sales_std', '50%':'cate_sales_med'},inplace=True)
+        #sales['cate_sales_ratio'] = sales['cate_sales_mean'].map(lambda x: x / sales['cate_sales_mean'].sum())
+        sales['cate_sales_rank'] = sales['cate_sales_mean'].rank(ascending=False)
+
+        price = self.data.groupby('상품군')['판매단가'].describe()[['mean','std','50%']]
+        price.rename(columns={'mean':'cate_price_mean', 'std':'cate_price_std', '50%':'cate_price_med'},inplace=True)
+        #price['cate_price_ratio'] = price['cate_price_mean'].map(lambda x: x / price['cate_price_mean'].sum())
+        price['cate_price_rank'] = price['cate_price_mean'].rank(ascending=False)
+
+        self.data = pd.merge(self.data,sales,on='상품군',how='left')
+        self.data = pd.merge(self.data,price,on='상품군',how='left')
+        
+        return self.data
+
+
+    def mk_day_var(self):
+
+        sales = self.train.groupby('day')['sales'].describe()[['mean','std','50%']]
+        sales.rename(columns={'mean':'day_sales_mean', 'std':'day_sales_std', '50%':'day_sales_med'},inplace=True)
+        #sales['day_sales_ratio'] = sales['day_sales_mean'].map(lambda x: x / sales['day_sales_mean'].sum())
+        sales['day_sales_rank'] = sales['day_sales_mean'].rank(ascending=False)
+
+        return pd.merge(self.data,sales,on='day', how='left')
+
+    def mk_hour_var(self):
+
+        sales = self.train.groupby('hour')['sales'].describe()[['mean','std','50%']]
+        sales.rename(columns={'mean':'hour_sales_mean', 'std':'hour_sales_std', '50%':'hour_sales_med'},inplace=True)
+        #sales['hour_sales_ratio'] = sales['hour_sales_mean'].map(lambda x: x / sales['hour_sales_mean'].sum())
+        sales['hour_sales_rank'] = sales['hour_sales_mean'].rank(ascending=False)
+
+        return pd.merge(self.data,sales,on='hour',how='left')
+
+    def mk_min_var(self):
+
+        sales = self.train.groupby('min')['sales'].describe()[['mean','std','50%']]
+        sales.rename(columns={'mean':'min_sales_mean', 'std':'min_sales_std', '50%':'min_sales_med'},inplace=True)
+        #sales['min_sales_ratio'] = sales['min_sales_mean'].map(lambda x: x / sales['min_sales_mean'].sum())
+        sales['min_sales_rank'] = sales['min_sales_mean'].rank(ascending=False)
+
+        return pd.merge(self.data, sales, on='min', how='left')
+
+    def __call__(self):
+        self.data = self.mk_cate_var()
+        self.data = self.mk_day_var()
+        self.data = self.mk_hour_var()
+        self.data = self.mk_min_var()
+
+        return self.data

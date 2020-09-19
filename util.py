@@ -7,7 +7,7 @@ import seaborn as sns
 plt.rc('font', family='NanumBarunGothic')
 from sklearn.ensemble import IsolationForest
 from sklearn.cluster import KMeans
-from make_var_func import mk_var
+from make_var_func import mk_var, mk_stat_var
 from sklearn.preprocessing import LabelEncoder
 import os
 from sklearn.decomposition import PCA
@@ -118,6 +118,13 @@ def preprocess(perform,question,drop_rate,k,inner=False):
 
     return train, test, y, y_km
 
+def mk_statistics_var(train,test):
+    stat_var = mk_stat_var(train,test)
+    data = stat_var()
+
+    #data.fillna(0, inplace=True) # test set 무형 data 변수
+
+    return data
 
 def mk_trainset(data,dummy = ['gender','pay','hour_gr','min_gr','len_gr','show_norm_order_gr']):
     """
