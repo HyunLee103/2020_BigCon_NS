@@ -1,7 +1,7 @@
 from lightgbm.callback import early_stopping
 from pandas.io.pytables import Term
 from sklearn import dummy
-from util import load_data, preprocess,mk_statistics_var,mk_trainset, metric, scoring
+from util import load_data,mk_sid,preprocess,mk_statistics_var,mk_trainset, metric, scoring
 from clustering import clustering
 from sklearn.model_selection import train_test_split
 from lightgbm import LGBMRegressor
@@ -45,6 +45,7 @@ def predict(X_train,val,k,col_sample=0.6,lr=0.04,iter=1500,six=True):
 if __name__=='__main__': 
     data_path = 'data/'
     perform_raw, rating, test_raw = load_data(data_path)
+    # perform_raw, test_raw = mk_sid(perform_raw,test_raw)
     train, test, y_km, train_len = preprocess(perform_raw,test_raw,0.03,3,inner=False) # train, test 받아서 쓰면 돼
     raw_data = mk_statistics_var(train,test)
     data = mk_trainset(raw_data)
