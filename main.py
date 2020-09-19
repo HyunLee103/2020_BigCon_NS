@@ -109,17 +109,17 @@ def make_sid(perform_raw,test_raw):
 
 
 # excution
-#if __name__=='__main__': 
-data_path = 'data/'
-perform_raw, rating, test_raw = load_data(data_path)
-perform_raw, test_raw = make_sid(perform_raw, test_raw)
-#train, test, y_km, train_len = preprocess(perform_raw,test_raw,0.03,3,inner=False) # train, test 받아서 쓰면 돼
-train, test, y_km, train_len = preprocess_sales_to_mean(perform_raw,test_raw,0.03,3,inner=False)
-raw_data = mk_statistics_var(train,test)
-data = mk_trainset(raw_data)
-# data - sales, mean_sales 모두 갖고 있는 상태
-train, val = clustering(data,y_km,train_len)
-predict(train,val,3)
+if __name__=='__main__': 
+    data_path = 'data/'
+    perform_raw, rating, test_raw = load_data(data_path)
+    perform_raw, test_raw = make_sid(perform_raw, test_raw)
+    #train, test, y_km, train_len = preprocess(perform_raw,test_raw,0.03,3,inner=False) # train, test 받아서 쓰면 돼
+    train, test, y_km, train_len = preprocess_sales_to_mean(perform_raw,test_raw,0.03,3,inner=False)
+    raw_data = mk_statistics_var(train,test)
+    data = mk_trainset(raw_data)
+    # data - sales, mean_sales 모두 갖고 있는 상태
+    train, val = clustering(data,y_km,train_len)
+    predict(train,val,3)
 
 
 
