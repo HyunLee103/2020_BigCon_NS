@@ -9,15 +9,15 @@ from sklearn.metrics import accuracy_score
 from sklearn.model_selection import RandomizedSearchCV
 
 
-def clustering(data,y_km):
+def clustering(data,y_km,train_len):
     """
     make cluster for train and val set using models from return of modeling func.
     return : clustered dataframe
     """  
-    X_train = data.iloc[:34317,:]
-    X_test = data.iloc[34317:,:]
+    X_train = data.iloc[:train_len,:]
+    X_test = data.iloc[train_len:,:]
     train_features, val_features, train_labels, val_labels = train_test_split(X_train,y_km,random_state=2020,test_size=0.08)
-    
+
     lgb = LGBMClassifier(n_estimators=2000,learning_rate=0.04,subsample=0.8,colsample_bytree=0.5,random_state=2020,objective='multiclass')
     lgb.fit(train_features.drop(['id','sales'],axis=1),train_labels,early_stopping_rounds=300,eval_set=[(val_features.drop(['id','sales'],axis=1),val_labels)],verbose=True)
 
@@ -30,11 +30,9 @@ def clustering(data,y_km):
     return train, val_features
 
 
+
+"""
 def eval_cluster(data,y_km):
-    """
-    Evaluate clustering accuracy
-    return : models
-    """
     ## mk train set
     X_train = data.iloc[:34317,:]
     X_test = data.iloc[34317:,:]
@@ -76,3 +74,5 @@ def eval_cluster(data,y_km):
 
     print('gbm : {}, lgbm : {}, XGB : {}, Voting : {}'.format(gb_score,lgbm_score,xgb_score,ensemble_score))
     return lgb, ensemble
+
+"""

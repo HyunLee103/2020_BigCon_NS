@@ -112,11 +112,10 @@ def preprocess(perform,question,drop_rate,k,inner=False):
     train.rename(columns={'취급액':'sales'},inplace=True)
     test.rename(columns={'취급액':'sales'},inplace=True)
 
-    y = train[['sales']]
     y_km = train[['kmeans']]
     train = train.drop(['kmeans'],axis=1)
 
-    return train, test, y, y_km
+    return train, test, y_km, len(train)
 
 def mk_statistics_var(train,test):
     stat_var = mk_stat_var(train,test)
@@ -133,7 +132,7 @@ def mk_trainset(data,dummy = ['gender','pay','min_gr','len_gr','show_norm_order_
     """
     data['sales_per'] = np.log1p(data['판매단가'])
     data.rename(columns={'마더코드':'mcode','상품군':'cate','노출(분)':'length_raw','상품코드':'item_code'},inplace=True)
-
+    # data['sales'] = np.log1p(data['sales'])
     encoder = LabelEncoder()
     encoder.fit(data['cate'])
     data['cate'] = encoder.transform(data['cate'])
@@ -185,7 +184,7 @@ def scoring(sales,pred):
         return score
 
 
-
+"""
 def kmeans(data,k,var=['sales'],visual=False):
 
     train_km = pd.concat([data.iloc[:36250,:],y],axis=1)
@@ -211,3 +210,4 @@ def kmeans(data,k,var=['sales'],visual=False):
         plt.show()
 
     return y_km
+"""

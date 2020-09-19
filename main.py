@@ -7,9 +7,6 @@ from sklearn.model_selection import train_test_split
 from lightgbm import LGBMRegressor
 from dim_reduction import train_AE,by_AE,by_PCA
 import pandas as pd
-from sklearn.metrics import accuracy_score
-from catboost import Pool, CatBoostClassifier
-import seaborn as sns
 
 
 def boosting(X,y,X_val,y_val,col_sample=0.6,lr=0.04,iter=1500,six=True):
@@ -42,29 +39,51 @@ def predict(X_train,val,k,col_sample=0.6,lr=0.04,iter=1500,six=True):
         print(f'Cluster_{i} : {round(score,2)}%\n')
     print(f'Total error : {round(sum/total_len,2)}%')
 
+
+
 # excution
 if __name__=='__main__': 
     data_path = 'data/'
     perform_raw, rating, test_raw = load_data(data_path)
-    train, test, y, y_km = preprocess(perform_raw,test_raw,0.03,3,inner=False) # train, test 받아서 쓰면 돼
+    train, test, y_km, train_len = preprocess(perform_raw,test_raw,0.03,3,inner=False) # train, test 받아서 쓰면 돼
     raw_data = mk_statistics_var(train,test)
     data = mk_trainset(raw_data)
-    train, val = clustering(data,y_km)
+    train, val = clustering(data,y_km,train_len)
     predict(train,val,3)
 
 
+
+
+
+
+
+
+
+
+
+
 """
-sns.boxplot(tem[tem['kmeans']==0]['sales'])
-sns.boxplot(tem[tem['kmeans']==1]['sales'])
-sns.boxplot(tem[tem['kmeans']==2]['sales'])
+
+train['kmeans'].value_counts()
+sns.boxplot(val[val['kmeans']==0]['sales'])
+
+sns.boxplot(train[train['kmeans']==0]['sales'])
+sns.boxplot(train[train['kmeans']==1]['sales'])
+sns.boxplot(train[train['kmeans']==2]['sales'])
 sns.boxplot(val[val['kmeans']==0]['sales'])
 sns.boxplot(val[val['kmeans']==1]['sales'])
 sns.boxplot(val[val['kmeans']==2]['sales'])
 
-X_train = data.iloc[:34317,:]
+out = IsolationForest(contamination = 0.1,max_features=1.0, bootstrap=False, n_jobs=-1, random_state=2020, verbose=0)
+val_0 = val[val['kmeans']==0]
+val_0.reset_index(drop=True,inplace=True)
+tem = val_0['sales'].reset_index()
+out.fit(tem)
+tem['anomaly'] = out.predict(tem)
+sns.boxplot(val_0[tem['anomaly']==1]['sales'])
+val_0 = val_0[tem['anomaly']==1]
 
-train_features, val_features, train_labels, val_labels = train_test_split(X_train,y_km,random_state=2020,test_size=0.08)
-tem = pd.concat([val_features,val_labels],axis=1)
+val = pd.concat([val[val['kmeans']==1],val[val['kmeans']==2],val_0])
 
 
 
