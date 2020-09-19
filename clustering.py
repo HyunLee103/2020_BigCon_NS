@@ -17,14 +17,17 @@ def clustering(data,y_km):
     X_train = data.iloc[:34317,:]
     X_test = data.iloc[34317:,:]
     train_features, val_features, train_labels, val_labels = train_test_split(X_train,y_km,random_state=2020,test_size=0.08)
-
+    
     lgb = LGBMClassifier(n_estimators=2000,learning_rate=0.04,subsample=0.8,colsample_bytree=0.5,random_state=2020,objective='multiclass')
     lgb.fit(train_features.drop(['id','sales'],axis=1),train_labels,early_stopping_rounds=300,eval_set=[(val_features.drop(['id','sales'],axis=1),val_labels)],verbose=True)
 
     val_features['kmeans'] = lgb.predict(val_features.drop(['id','sales'],axis=1))
-    train_features,train_labels
 
-    return pd.concat([train_features,train_labels],axis=1), val_features
+    val_features.reset_index(drop=True,inplace=True)
+    train = pd.concat([train_features,train_labels],axis=1)
+    train.reset_index(drop=True,inplace=True)
+
+    return train, val_features
 
 
 def eval_cluster(data,y_km):
