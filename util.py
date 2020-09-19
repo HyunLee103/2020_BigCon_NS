@@ -123,10 +123,9 @@ def mk_statistics_var(train,test):
     data = stat_var()
 
     #data.fillna(0, inplace=True) # test set 무형 data 변수
-
     return data
 
-def mk_trainset(data,dummy = ['gender','pay','hour_gr','min_gr','len_gr','show_norm_order_gr']):
+def mk_trainset(data,dummy = ['gender','pay','min_gr','len_gr','show_norm_order_gr']):
     """
     select feature to make train set 
     arg : data, dummy(list that make it one-hot-encoding)

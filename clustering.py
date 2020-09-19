@@ -9,33 +9,22 @@ from sklearn.metrics import accuracy_score
 from sklearn.model_selection import RandomizedSearchCV
 
 
-def clustering(data,y_km,y):
+def clustering(data,y_km):
     """
     make cluster for train and val set using models from return of modeling func.
     return : clustered dataframe
     """  
-    X_train = data.iloc[:36250,:]
-    X_test = data.iloc[36250:,:]
-    X_train = pd.concat([X_train,y_km,y],axis=1)
-    six = X_train[X_train['month']==6]
-    others = X_train[X_train['month']!=6]
-    train_sample_six = six.sample(1716,random_state=2020)
-    train_sample_other = others.sample(1000,random_state=2020)
-    
-    X_val = pd.concat([train_sample_six,train_sample_other])
-    X_train = X_train[X_train['id'].isin(set(X_train['id']) - set(X_val['id']))]
+    X_train = data.iloc[:34317,:]
+    X_test = data.iloc[34317:,:]
+    train_features, val_features, train_labels, val_labels = train_test_split(X_train,y_km,random_state=2020,test_size=0.08)
 
-    train_features = X_train.drop(['id','kmeans','sales'],axis=1)
-    train_labels = X_train['kmeans']
-    val_features = X_val.drop(['id','kmeans','sales'],axis=1)
-    val_labels = X_val['kmeans']
-    lgb = LGBMClassifier(n_estimators=2000,learning_rate=0.045,subsample=0.8,colsample_bytree=0.6,random_state=2020,objective='multiclass')
-    lgb.fit(train_features,train_labels,early_stopping_rounds=300,eval_set=[(val_features,val_labels)],verbose=True)
-    
+    lgb = LGBMClassifier(n_estimators=2000,learning_rate=0.04,subsample=0.8,colsample_bytree=0.5,random_state=2020,objective='multiclass')
+    lgb.fit(train_features.drop(['id','sales'],axis=1),train_labels,early_stopping_rounds=300,eval_set=[(val_features.drop(['id','sales'],axis=1),val_labels)],verbose=True)
 
-    X_val['kmeans_pred'] = lgb.predict(val_features)
+    val_features['kmeans'] = lgb.predict(val_features.drop(['id','sales'],axis=1))
+    train_features,train_labels
 
-    return X_train, X_val
+    return pd.concat([train_features,train_labels],axis=1), val_features
 
 
 def eval_cluster(data,y_km):
@@ -44,8 +33,8 @@ def eval_cluster(data,y_km):
     return : models
     """
     ## mk train set
-    X_train = data.iloc[:36250,:]
-    X_test = data.iloc[36250:,:]
+    X_train = data.iloc[:34317,:]
+    X_test = data.iloc[34317:,:]
 
     ## modeling
     # gbm
