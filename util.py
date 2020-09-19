@@ -117,6 +117,39 @@ def preprocess(perform,question,drop_rate,k,inner=False):
     train = train.drop(['kmeans'],axis=1)
 
     return train, test, y, y_km
+ 
+
+def preprocess_sales_to_mean(perform,question,drop_rate,k,inner=False):
+    data = pd.concat([perform,question])
+    data.reset_index(inplace=True,drop=True)
+    var = mk_var(data)
+    data = var()
+    train = data.iloc[:37372,:]
+    test = data.iloc[37372:,:]
+    test.reset_index(inplace=True,drop=True)
+    train.reset_index(inplace=True,drop=True)
+
+    train = train[train['취급액']!=0]
+    train.reset_index(inplace=True,drop=True)
+
+    # 이상치 제거 X
+    #train = del_outlier(train,drop_rate)
+    #train.reset_index(inplace=True,drop=True)
+
+    sales_mean = train.groupby(['show_id','상품코드'])['취급액'].mean()
+    del train['취급액']
+    train = pd.merge(train,sales_mean,on=['show_id','상품코드'],how='left')
+    train = train[train['취급액'] != 0]
+
+    train = km_clust(train,k,inner=inner)
+    train.rename(columns={'취급액':'sales'},inplace=True)
+    test.rename(columns={'취급액':'sales'},inplace=True)
+
+    y = train[['sales']]
+    y_km = train[['kmeans']]
+    train = train.drop(['kmeans'],axis=1)
+
+    return train, test, y, y_km
 
 def mk_statistics_var(train,test):
     stat_var = mk_stat_var(train,test)
@@ -152,7 +185,7 @@ def mk_trainset(data,dummy = ['gender','pay','min_gr','len_gr','show_norm_order_
     data['mcode'] = data['mcode'].astype(int)
     data['item_code'] = data['item_code'].astype('str').apply(lambda x: x[2:])
     data['item_code'] = data['item_code'].astype(int)
-    data = data.drop(['방송일시','상품명','판매단가','length_raw'],axis=1)
+    data = data.drop(['방송일시','상품명','판매단가','length_raw','show_id'],axis=1)
 
     return data
 

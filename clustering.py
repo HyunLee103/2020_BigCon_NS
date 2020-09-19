@@ -14,8 +14,12 @@ def clustering(data,y_km):
     make cluster for train and val set using models from return of modeling func.
     return : clustered dataframe
     """  
-    X_train = data.iloc[:34317,:]
-    X_test = data.iloc[34317:,:]
+    #X_train = data.iloc[:34317,:]
+    #X_test = data.iloc[34317:,:]
+
+    X_train = data.iloc[:35379,:]
+    X_test = data.iloc[35379:,:]
+
     train_features, val_features, train_labels, val_labels = train_test_split(X_train,y_km,random_state=2020,test_size=0.08)
     
     lgb = LGBMClassifier(n_estimators=2000,learning_rate=0.04,subsample=0.8,colsample_bytree=0.5,random_state=2020,objective='multiclass')
@@ -36,8 +40,11 @@ def eval_cluster(data,y_km):
     return : models
     """
     ## mk train set
-    X_train = data.iloc[:34317,:]
-    X_test = data.iloc[34317:,:]
+    #X_train = data.iloc[:34317,:]
+    #X_test = data.iloc[34317:,:]
+
+    X_train = data.iloc[:35379,:]
+    X_test = data.iloc[35379:,:]
 
     ## modeling
     # gbm

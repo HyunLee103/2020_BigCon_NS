@@ -1,11 +1,12 @@
 from lightgbm.callback import early_stopping
 from pandas.io.pytables import Term
 from sklearn import dummy
-from util import load_data, preprocess,mk_statistics_var,mk_trainset, metric, scoring
+from util import load_data,preprocess,preprocess_sales_to_mean,mk_statistics_var,mk_trainset, metric, preprocess_sales_to_mean, scoring
 from clustering import clustering
 from sklearn.model_selection import train_test_split
 from lightgbm import LGBMRegressor
 from dim_reduction import train_AE,by_AE,by_PCA
+import numpy as np
 import pandas as pd
 from sklearn.metrics import accuracy_score
 from catboost import Pool, CatBoostClassifier
@@ -42,16 +43,87 @@ def predict(X_train,val,k,col_sample=0.6,lr=0.04,iter=1500,six=True):
         print(f'Cluster_{i} : {round(score,2)}%\n')
     print(f'Total error : {round(sum/total_len,2)}%')
 
+def make_sid(perform_raw,test_raw):
+    
+    def preprocess(name):
+
+        # 예외 처리
+        name = name.replace('휴롬퀵스퀴저','휴롬 퀵스퀴저')
+        name = name.replace('장수흙침대','장수 흙침대')
+        name = name.replace('1+1 국내제조', '국내제조')
+
+        words = ['보국미니히터', '우아미', '갓바위', '두씽', '해뜰찬', '법성포굴비', '쥐치포', '공간아트', '르젠','쿠쿠']
+
+        # name 이 words 안에 있다면 name 전체를 위의 word로 대체.
+        for word in words:
+            if (word in name):
+                name = word
+
+        if ('삼성' in name) and ('도어' in name):
+            name = 'tmp'
+
+        brands = ['프라다','구찌','버버리','코치','마이클코어스','톰포드', '페라가모', '생로랑']
+
+        for brand in brands:
+            name = name.replace(brand,'명품')
+
+        # 상품명 처리
+        words = ['LG전자','삼성','LG','(일)3인용', '(일)4인용', '(무)3인용', '(무)4인용', '(삼성카드 6월 5%)',\
+        '[1세트]','[2세트]','[SET]','[풀패키지]','[실속패키지]', '(점보특대형)','(점보형)', '(중형)',\
+        '(퀸+퀸)','(킹+싱글)','(퀸+싱글)','(킹사이즈)','(퀸사이즈)','(더블사이즈)','(싱글사이즈)','(싱글+싱글)','(더블+더블)','(더블+싱글)',\
+        '(점보)','(특대)','(대형)','더커진','(1등급)467L_','(1등급)221L_','1세트 ','2세트 ','5세트 ','19년 신제품 ',\
+        'K-SWISS 남성','K-SWISS 여성','(퀸)','(싱글)','[무이자]','[일시불]','(무)','(일)','무)','일)','무이자','일시불']
+
+        for word in words:
+            name = name.replace(word,'')
+        
+        name = name.strip()
+
+        return name.split(' ')[0]
+
+    perform_raw['istrain'] = 1
+    test_raw['istrain'] = 0
+
+    data = pd.concat([perform_raw,test_raw])
+
+    tmp = data['상품명'].map(preprocess)
+    names = tmp.tolist()
+
+    # 전날 새벽, 다음날 아침 같은 물건 파는 경우 有 - id 31149~31153
+    names[30399] = '레이프릴1'
+    names[30400] = '레이프릴1'
+
+    ids = [0]
+
+    for i, name in enumerate(names[1:],1):
+        prior = names[i-1]
+
+        if prior == name:
+            ids.append(ids[-1])
+        else:
+            ids.append(ids[-1]+1)
+
+    data['show_id'] = np.array(ids)
+
+    perform_raw = data[data['istrain'] == 1]
+    test_raw = data[data['istrain'] == 0]
+    
+    return perform_raw.drop('istrain',axis=1), test_raw.drop('istrain',axis=1)
+
+
 # excution
 if __name__=='__main__': 
     data_path = 'data/'
     perform_raw, rating, test_raw = load_data(data_path)
-    train, test, y, y_km = preprocess(perform_raw,test_raw,0.03,3,inner=False) # train, test 받아서 쓰면 돼
+    perform_raw, test_raw = make_sid(perform_raw,test_raw)
+    train, test, y, y_km = preprocess_sales_to_mean(perform_raw,test_raw,0.03,3,inner=False) # train, test 받아서 쓰면 돼
     raw_data = mk_statistics_var(train,test)
+
+    
+
     data = mk_trainset(raw_data)
     train, val = clustering(data,y_km)
-    predict(train,val,3)
-
+    predict(train,val,3)S
 
 """
 sns.boxplot(tem[tem['kmeans']==0]['sales'])
