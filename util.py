@@ -12,7 +12,7 @@ from sklearn.preprocessing import LabelEncoder
 import os
 from sklearn.decomposition import PCA
 from mpl_toolkits.mplot3d import Axes3D
-import pandas as pd
+from collections import Counter
 
 
 
@@ -158,7 +158,6 @@ def km_clust(x, k, var=['취급액'],inner=3):
     else:
         return pd.concat([x,Z['kmeans']],axis=1)
 
-
 def preprocess(perform,question,drop_rate,k,inner=False):
     data = pd.concat([perform,question])
     data.reset_index(inplace=True,drop=True)
@@ -172,17 +171,19 @@ def preprocess(perform,question,drop_rate,k,inner=False):
     train = train[train['취급액']!=0]
     train.reset_index(inplace=True,drop=True)
 
-    train = del_outlier(train,drop_rate)
-    train.reset_index(inplace=True,drop=True)
+    #train = del_outlier(train,drop_rate)
+    #train.reset_index(inplace=True,drop=True)
 
-    train = km_clust(train,k,inner=inner)
+    sales_by_sid = train.groupby(['show_id','상품코드'])['취급액'].sum().reset_index(name='sales_by_sid')
+    km_by_sid = km_clust(sales_by_sid,k,['sales_by_sid'],inner=inner)
+    train = pd.merge(train,sales_by_sid,on=['show_id','상품코드'], how='left')
+
     train.rename(columns={'취급액':'sales'},inplace=True)
     test.rename(columns={'취급액':'sales'},inplace=True)
 
-    y_km = train[['kmeans']]
-    train = train.drop(['kmeans'],axis=1)
+    #train = train.drop(['kmeans'],axis=1)
 
-    return train, test, y_km, len(train)
+    return train, test, km_by_sid[['kmeans']], len(train)
 
 def mk_statistics_var(train,test):
     stat_var = mk_stat_var(train,test)
@@ -191,20 +192,91 @@ def mk_statistics_var(train,test):
     #data.fillna(0, inplace=True) # test set 무형 data 변수
     return data
 
-def mk_trainset(data,dummy = ['gender','pay','min_gr','len_gr','show_norm_order_gr']):
+
+def mk_sid_df(data,train_len):
+
+    data['istrain'] = 0
+    data.iloc[:train_len,data.columns.get_loc('istrain')] = 1
+
+    sid_icode = pd.DataFrame(data.groupby('show_id')['상품코드'].apply(lambda x: list(set(x)))).reset_index()
+
+    sid_df = pd.DataFrame({
+        col:np.repeat(sid_icode['show_id'].values,sid_icode['상품코드'].str.len())
+        for col in sid_icode.columns.drop('상품코드')
+    }).assign(**{'상품코드': np.concatenate(sid_icode['상품코드'].values)})
+
+    sid_train = data[['show_id','istrain']].drop_duplicates('show_id')
+    sid_df = pd.merge(sid_df,sid_train,on='show_id',how='left') # show_id, 상품코드 col 존재
+        
+    # raw_data의 변수 > sid_df에게 갖다 붙히기.
+    # ㄴ 'hour_gr', 'id',
+    #    'len_gr', 'min', 'min_gr',
+    #    'rating',
+    #    'sales', 'sales_by_sid', 'show_id', 'show_norm_order',
+    #    'show_norm_order_gr', 'show_order', '노출(분)', '마더코드', '방송일시',
+    #    '상품군', '상품명', '상품코드', '판매단가', 'day_sales_mean',
+    #    'day_sales_std', 'day_sales_med', 'day_sales_rank', 'hour_sales_mean',
+    #    'hour_sales_std', 'hour_sales_med', 'hour_sales_rank', 'min_sales_mean',
+    #    'min_sales_std', 'min_sales_med', 'min_sales_rank', 'istrain'
+
+    # 1. 상품코드 기준 단순 merge (=상품코드가 같으면 모두 같은 것들)
+
+    item_code = data[['상품코드','마더코드','상품군','gender','pcode_freq','pay','set','special','판매단가',\
+                'cate_sales_mean','cate_sales_std','cate_sales_med','cate_sales_rank','cate_price_mean',\
+                'cate_price_std','cate_price_med','cate_price_rank','mcode_freq', 'mcode_freq_gr']]
+    item_code = item_code.drop_duplicates('상품코드')
+
+    sid_df = pd.merge(sid_df,item_code,on='상품코드',how='left') # 13618 row
+
+    # 2. show_id 기준 단순 merge (= show_id가 같으면 모두 같은 것들)
+    sid = data[['show_id','pcode_count','rating_byshow']]
+    sid = sid.drop_duplicates('show_id')
+
+    sid_df = pd.merge(sid_df,sid,on='show_id',how='left')
+
+    # 3. length sum
+    length = data.groupby(['show_id','상품코드'])['length'].sum()
+    sid_df = pd.merge(sid_df,length,on=['show_id','상품코드'],how='left')
+
+    # 4. show_id, 상품코드로 groupby 후 더 많은 것 택하기
+    for col in ['day','holiday','hour','hour_prime','month','season']:
+        dat = data.groupby(['show_id','상품코드'])[col].apply(lambda x: Counter(list(x)).most_common()[0][0])
+        sid_df = pd.merge(sid_df, dat, on=['show_id','상품코드'], how='left')
+
+    # 5. day, hour
+    day = data[['day','day_sales_mean','day_sales_std', 'day_sales_med', 'day_sales_rank']]
+    day.drop_duplicates('day', inplace = True)
+
+    sid_df = pd.merge(sid_df, day, on='day', how='left')
+
+    hour = data[['hour','hour_sales_mean','hour_sales_std', 'hour_sales_med', 'hour_sales_rank']]
+    hour.drop_duplicates('hour', inplace =True)
+    
+    sid_df = pd.merge(sid_df, hour, on='hour', how='left')
+
+    # 6. 학습될 값 붙이기
+    sales_by_sid = data[['show_id','상품코드','sales_by_sid']]
+    sales_by_sid.drop_duplicates(['show_id','상품코드'], inplace = True)
+
+    sid_df =pd.merge(sid_df,sales_by_sid, on = ['show_id','상품코드'], how='left')
+    
+    return data[['show_id','상품코드','sales','show_norm_order','length']], sid_df
+    
+
+def mk_trainset(data,dummy = ['gender','pay','set','special','cate','day','hour']):
     """
     select feature to make train set 
     arg : data, dummy(list that make it one-hot-encoding)
     return : data
     """
     data['sales_per'] = np.log1p(data['판매단가'])
-    data.rename(columns={'마더코드':'mcode','상품군':'cate','노출(분)':'length_raw','상품코드':'item_code'},inplace=True)
+    data.rename(columns={'마더코드':'mcode','상품군':'cate','상품코드':'item_code'},inplace=True)
     # data['sales'] = np.log1p(data['sales'])
     encoder = LabelEncoder()
     encoder.fit(data['cate'])
     data['cate'] = encoder.transform(data['cate'])
 
-    all_cate = ['day','hour','min','mcode_freq_gr','show_order','gender','pay','hour_gr','min_gr','len_gr','show_order','show_norm_order_gr','cate']
+    all_cate = ['gender','pay','set','special','cate','mcode_freq_gr','day','hour','month','season']
     left_cate = [x for x in all_cate if x not in dummy]
 
     if dummy:
@@ -214,11 +286,11 @@ def mk_trainset(data,dummy = ['gender','pay','min_gr','len_gr','show_norm_order_
         for var in left_cate:
             data[var] = data[var].astype('category')
 
-    data['mcode'] = data['mcode'].astype('str').apply(lambda x: x[3:])
-    data['mcode'] = data['mcode'].astype(int)
-    data['item_code'] = data['item_code'].astype('str').apply(lambda x: x[2:])
-    data['item_code'] = data['item_code'].astype(int)
-    data = data.drop(['방송일시','상품명','판매단가','length_raw'],axis=1)
+    #data['mcode'] = data['mcode'].astype('str').apply(lambda x: x[3:])
+    #data['mcode'] = data['mcode'].astype(int)
+    #data['item_code'] = data['item_code'].astype('str').apply(lambda x: x[2:])
+    #data['item_code'] = data['item_code'].astype(int)
+    data = data.drop(['판매단가','mcode'],axis=1)
 
     return data
 

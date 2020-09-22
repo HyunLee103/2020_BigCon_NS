@@ -9,19 +9,22 @@ from sklearn.metrics import accuracy_score
 from sklearn.model_selection import RandomizedSearchCV
 
 
-def clustering(data,y_km,train_len):
+def clustering(data,km_by_sid):
     """
     make cluster for train and val set using models from return of modeling func.
     return : clustered dataframe
     """  
-    X_train = data.iloc[:train_len,:]
-    X_test = data.iloc[train_len:,:]
-    train_features, val_features, train_labels, val_labels = train_test_split(X_train,y_km,random_state=2020,test_size=0.08)
+    X_train = data[data['istrain'] == 1] # 12702
+    X_test = data[data['istrain'] == 0]
 
+    X_train.drop('istrain',axis=1,inplace=True)
+    X_test.drop('istrain',axis=1,inplace=True)
+
+    train_features, val_features, train_labels, val_labels = train_test_split(X_train,km_by_sid,random_state=2020,test_size=0.08)
     lgb = LGBMClassifier(n_estimators=2000,learning_rate=0.04,subsample=0.8,colsample_bytree=0.5,random_state=2020,objective='multiclass')
-    lgb.fit(train_features.drop(['id','sales'],axis=1),train_labels,early_stopping_rounds=300,eval_set=[(val_features.drop(['id','sales'],axis=1),val_labels)],verbose=True)
+    lgb.fit(train_features.drop(['show_id','sales_by_sid'],axis=1),train_labels,early_stopping_rounds=300,eval_set=[(val_features.drop(['show_id','sales_by_sid'],axis=1),val_labels)],verbose=True)
 
-    val_features['kmeans'] = lgb.predict(val_features.drop(['id','sales'],axis=1))
+    val_features['kmeans'] = lgb.predict(val_features.drop(['show_id','sales_by_sid'],axis=1))
 
     val_features.reset_index(drop=True,inplace=True)
     train = pd.concat([train_features,train_labels],axis=1)

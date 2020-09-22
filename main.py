@@ -1,7 +1,7 @@
 from lightgbm.callback import early_stopping
 from pandas.io.pytables import Term
 from sklearn import dummy
-from util import load_data,mk_sid,preprocess,mk_statistics_var,mk_trainset, metric, scoring
+from util import load_data,mk_sid,preprocess,mk_statistics_var,mk_sid_df,mk_trainset, metric, scoring
 from clustering import clustering
 from sklearn.model_selection import train_test_split
 from lightgbm import LGBMRegressor
@@ -14,30 +14,38 @@ def boosting(X,y,X_val,y_val,col_sample=0.6,lr=0.04,iter=1500,six=True):
     model_lgb = LGBMRegressor(subsample= 0.7, colsample_bytree= col_sample, learning_rate=lr,n_estimators=iter,random_state=2020)
     model_lgb.fit(X,y,early_stopping_rounds = 500,eval_set = [(X_val,y_val)],verbose=False)
     pred_lgb = model_lgb.predict(X_val)
+
+    res = pd.DataFrame(pred_lgb,columns=['pred'])
     
-    res = pd.concat([y_val.reset_index(drop=True),pd.DataFrame(pred_lgb,columns=['pred'])],axis=1)
-    res['score'] = res.apply(lambda x : scoring(x['sales'],x['pred']),axis=1)
-    return res['score'].mean(), len(res)
+    #res = pd.concat([y_val.reset_index(drop=True),pd.DataFrame(pred_lgb,columns=['pred'])],axis=1)
+    #res['score'] = res.apply(lambda x : scoring(x['sales'],x['pred']),axis=1)
+    
+    return res
 
 def predict(X_train,val,k,col_sample=0.6,lr=0.04,iter=1500,six=True):
     """
     predict '취급액' score only using train set(perform)
     return : RMAE score for each cluster
     """
+    orgin = boosting(X_train.drop(['show_id','item_code','sales_by_sid','kmeans'],axis=1),X_train['sales_by_sid'],val.drop(['show_id','item_code','sales_by_sid','kmeans'],axis=1),val['sales_by_sid'],col_sample,lr,iter,six)
+    orgin = pd.concat([val[['show_id','item_code','kmeans','sales_by_sid']].reset_index(drop=True),orgin],axis=1)
 
-    origin, originlen = boosting(X_train.drop(['id','sales','kmeans'],axis=1),X_train['sales'],val.drop(['sales','kmeans','id'],axis=1),val['sales'],col_sample,lr,iter,six)
-    print(f'origin error : {round(origin,2)}%\n')
+    train_tem = X_train[X_train['kmeans']==0]
+    val_tem = val[val['kmeans']==0]
+    pred_0 = boosting(train_tem.drop(['show_id','item_code','sales_by_sid','kmeans'],axis=1),train_tem['sales_by_sid'],val_tem.drop(['show_id','item_code','sales_by_sid','kmeans'],axis=1),val_tem['sales_by_sid'],col_sample,lr,iter,six)
+    pred_0 = pd.concat([val_tem[['show_id','item_code','kmeans','sales_by_sid']].reset_index(drop=True),pred_0],axis=1)
 
-    sum = 0
-    total_len = 0
-    for i in range(k):
-        train_tem = X_train[X_train['kmeans']==i]
-        val_tem = val[val['kmeans']==i]
-        score,len = boosting(train_tem.drop(['sales','kmeans','id'],axis=1),train_tem['sales'],val_tem.drop(['sales','kmeans','id'],axis=1),val_tem['sales'],col_sample,lr,iter,six)
-        sum += (score * len)
-        total_len += len
-        print(f'Cluster_{i} : {round(score,2)}%\n')
-    print(f'Total error : {round(sum/total_len,2)}%')
+    train_tem = X_train[X_train['kmeans']==1]
+    val_tem = val[val['kmeans']==1]
+    pred_1 = boosting(train_tem.drop(['show_id','item_code','sales_by_sid','kmeans'],axis=1),train_tem['sales_by_sid'],val_tem.drop(['show_id','item_code','sales_by_sid','kmeans'],axis=1),val_tem['sales_by_sid'],col_sample,lr,iter,six)
+    pred_1 = pd.concat([val_tem[['show_id','item_code','kmeans','sales_by_sid']].reset_index(drop=True),pred_1],axis=1)
+
+    train_tem = X_train[X_train['kmeans']==2]
+    val_tem = val[val['kmeans']==2]
+    pred_2 = boosting(train_tem.drop(['show_id','item_code','sales_by_sid','kmeans'],axis=1),train_tem['sales_by_sid'],val_tem.drop(['show_id','item_code','sales_by_sid','kmeans'],axis=1),val_tem['sales_by_sid'],col_sample,lr,iter,six)
+    pred_2 = pd.concat([val_tem[['show_id','item_code','kmeans','sales_by_sid']].reset_index(drop=True),pred_2],axis=1)
+
+    return orgin,pd.concat([pred_0,pred_1,pred_2]).reset_index(drop=True)
 
 
 
@@ -45,26 +53,67 @@ def predict(X_train,val,k,col_sample=0.6,lr=0.04,iter=1500,six=True):
 if __name__=='__main__': 
     data_path = 'data/'
     perform_raw, rating, test_raw = load_data(data_path)
-    # perform_raw, test_raw = mk_sid(perform_raw,test_raw)
-    train, test, y_km, train_len = preprocess(perform_raw,test_raw,0.03,3,inner=False) # train, test 받아서 쓰면 돼
-    raw_data = mk_statistics_var(train,test)
-    data = mk_trainset(raw_data)
-    train, val = clustering(data,y_km,train_len)
-    predict(train,val,3)
+    perform_raw, test_raw = mk_sid(perform_raw,test_raw)
+    train, test, km_by_sid, train_len = preprocess(perform_raw,test_raw,0.03,3,inner=False) # train, test 받아서 쓰면 돼
+    # train - 35379 (= train_len) / km_by_sid - 12702 / test - 2716
+    raw_data = mk_statistics_var(train,test) # raw_data - 38095
+    sales, data = mk_sid_df(raw_data.copy(),train_len) # data - 13618
+    # sales - 방송ID,상품코드,정답값(전체 row 대상), 학습때 필요한 방송별 sales 값은 df에 붙어있음.
+    data = mk_trainset(data)
 
+    train, val = clustering(data,km_by_sid)
 
+    orgin_pred,k_pred = predict(train,val,3)
+    
+    # 함수화 해야
+    orgin_ans = pd.merge(sales,orgin_pred,left_on=['show_id','상품코드'],right_on=['show_id','item_code'],how='left')
+    orgin_ans = orgin_ans.dropna()
 
+    k_ans = pd.merge(sales,k_pred,left_on=['show_id','상품코드'],right_on=['show_id','item_code'],how='left')
+    k_ans = k_ans.dropna()
 
+    # 방법1. 평균
+    count = orgin_ans.groupby(['show_id','상품코드'])['sales'].count().reset_index().rename({'sales':'count'},axis=1)
+    orgin_ans = pd.merge(orgin_ans,count,on=['show_id','상품코드'],how='left')
+    k_ans = pd.merge(k_ans,count,on=['show_id','상품코드'],how='left')
 
+    orgin_fin = orgin_ans[['show_id','상품코드','sales','pred','count']].copy()
+    k_fin = k_ans[['show_id','상품코드','sales','pred','count']].copy()
 
+    orgin_fin['ans'] = orgin_ans.apply(lambda x: x['pred']/x['count'],axis=1)
+    k_fin['ans'] = k_ans.apply(lambda x: x['pred']/x['count'],axis=1)
 
+    orgin_fin['score'] = orgin_fin.apply(lambda x: scoring(x['sales'],x['ans']), axis=1)
+    orgin_fin['score'].mean() # 80.90
 
+    k_fin['score'] = k_fin.apply(lambda x: scoring(x['sales'],x['ans']), axis=1)
+    k_fin['score'].mean() # 74.52
 
+    # 방법2. 방송순서 별 편차
+    orgin_fin = orgin_ans[['show_id','상품코드','sales','pred','show_norm_order']].copy()
+    k_fin = k_ans[['show_id','상품코드','sales','pred','show_norm_order']].copy()
 
+    order_sum = orgin_ans.groupby(['show_id','상품코드'])['show_norm_order'].sum().reset_index()
+    order_sum.rename({'show_norm_order':'order_sum'},axis=1,inplace=True)
+
+    orgin_fin = pd.merge(orgin_fin,order_sum,on=['show_id','상품코드'],how='left')
+    k_fin = pd.merge(k_fin,order_sum,on=['show_id','상품코드'],how='left')
+
+    k_fin.head()
+
+    orgin_fin['ans'] = orgin_fin.apply(lambda x: x['pred'] * x['show_norm_order']/x['order_sum'], axis=1)
+    k_fin['ans'] = k_fin.apply(lambda x: x['pred'] * x['show_norm_order']/x['order_sum'],axis=1)
+
+    orgin_fin['score'] = orgin_fin.apply(lambda x: scoring(x['sales'],x['ans']), axis=1)
+    orgin_fin['score'].mean()
+
+    k_fin['score'] = k_fin.apply(lambda x: scoring(x['sales'],x['ans']), axis=1)
+    k_fin['score'].mean()
+
+    orgin_ans.groupby(['show_id','상품코드'])
 
 
 """
-
 train['kmeans'].value_counts()
 sns.boxplot(val[val['kmeans']==0]['sales'])
 
