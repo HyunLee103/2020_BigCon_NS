@@ -152,4 +152,4 @@ plt.xlabel('취급액')
 sns.boxplot(X_train_c2['sales'])
 plt.title('Cluster 2')
 plt.xlabel('취급액')
-"""
+""
