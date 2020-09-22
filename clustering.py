@@ -16,6 +16,9 @@ def clustering(data,y_km,train_len):
     """  
     X_train = data.iloc[:train_len,:]
     X_test = data.iloc[train_len:,:]
+    mean = X_train['sales'].mean()
+    std = X_train['sales'].std()
+    X_train['sales'] = (X_train['sales'] - mean)/std
     train_features, val_features, train_labels, val_labels = train_test_split(X_train,y_km,random_state=2020,test_size=0.08)
 
     lgb = LGBMClassifier(n_estimators=2000,learning_rate=0.04,subsample=0.8,colsample_bytree=0.5,random_state=2020,objective='multiclass')
@@ -27,7 +30,7 @@ def clustering(data,y_km,train_len):
     train = pd.concat([train_features,train_labels],axis=1)
     train.reset_index(drop=True,inplace=True)
 
-    return train, val_features
+    return train, val_features, mean, std
 
 
 

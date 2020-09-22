@@ -132,7 +132,9 @@ k : # of cluster
 return : 기존 dataset에 kmeans라는 컬럼 추가한 df
 """
 def km_clust(x, k, var=['취급액'],inner=3):
-
+    # mean = x[var].mean()
+    # std = x[var].std()
+    # x[var] = (x[var] - x[var].mean())/x[var].std()
     Z = x[var].reset_index()
     km = KMeans(n_clusters=k,random_state=2020)
     km.fit(Z)
@@ -227,10 +229,6 @@ def metric(real, pred):
     tem = np.abs((real - pred)/real)
     return tem.mean() * 100
 
-def s_metric(real, pred):
-    tem = np.abs(pred - real)/((np.abs(pred) + np.abs(real))/2)
-    return tem.mean() * 100
-
 
 def feature_impo(model,data):
     feature_imp = pd.DataFrame(sorted(zip(model.feature_importances_,data.columns)), columns=['Value','Feature'])
@@ -242,13 +240,6 @@ def feature_impo(model,data):
     plt.savefig('lgbm_importances-01.png')
 
 
-def scoring(sales,pred):
-    if sales==0:
-        score = s_metric(sales,pred)
-        return score
-    else:
-        score = metric(sales,pred)
-        return score
 
 
 """

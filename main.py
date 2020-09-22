@@ -7,25 +7,26 @@ from sklearn.model_selection import train_test_split
 from lightgbm import LGBMRegressor
 from dim_reduction import train_AE,by_AE,by_PCA
 import pandas as pd
+import seaborn as sns
 
+import numpy as np
 
-def boosting(X,y,X_val,y_val,col_sample=0.6,lr=0.04,iter=1500,six=True):
+def boosting(X,y,X_val,y_val,mean,std,col_sample=0.6,lr=0.04,iter=50000,six=True):
 
     model_lgb = LGBMRegressor(subsample= 0.7, colsample_bytree= col_sample, learning_rate=lr,n_estimators=iter,random_state=2020)
     model_lgb.fit(X,y,early_stopping_rounds = 500,eval_set = [(X_val,y_val)],verbose=False)
     pred_lgb = model_lgb.predict(X_val)
-    
     res = pd.concat([y_val.reset_index(drop=True),pd.DataFrame(pred_lgb,columns=['pred'])],axis=1)
-    res['score'] = res.apply(lambda x : scoring(x['sales'],x['pred']),axis=1)
-    return res['score'].mean(), len(res)
 
-def predict(X_train,val,k,col_sample=0.6,lr=0.04,iter=1500,six=True):
+    return metric(res['sales']*np.array(std)+np.array(mean),res['pred']*np.array(std)+np.array(mean)), len(res)
+
+
+def predict(X_train,val,k,mean,std,col_sample=0.6,lr=0.04,iter=50000,six=True):
     """
     predict '취급액' score only using train set(perform)
     return : RMAE score for each cluster
     """
-
-    origin, originlen = boosting(X_train.drop(['id','sales','kmeans'],axis=1),X_train['sales'],val.drop(['sales','kmeans','id'],axis=1),val['sales'],col_sample,lr,iter,six)
+    origin, originlen = boosting(X_train.drop(['id','sales','kmeans'],axis=1),X_train['sales'],val.drop(['sales','kmeans','id'],axis=1),val['sales'],mean,std,col_sample,lr,iter,six)
     print(f'origin error : {round(origin,2)}%\n')
 
     sum = 0
@@ -33,12 +34,11 @@ def predict(X_train,val,k,col_sample=0.6,lr=0.04,iter=1500,six=True):
     for i in range(k):
         train_tem = X_train[X_train['kmeans']==i]
         val_tem = val[val['kmeans']==i]
-        score,len = boosting(train_tem.drop(['sales','kmeans','id'],axis=1),train_tem['sales'],val_tem.drop(['sales','kmeans','id'],axis=1),val_tem['sales'],col_sample,lr,iter,six)
+        score,len = boosting(train_tem.drop(['sales','kmeans','id'],axis=1),train_tem['sales'],val_tem.drop(['sales','kmeans','id'],axis=1),val_tem['sales'],mean,std,col_sample,lr,iter,six)
         sum += (score * len)
         total_len += len
         print(f'Cluster_{i} : {round(score,2)}%\n')
     print(f'Total error : {round(sum/total_len,2)}%')
-
 
 
 # excution
@@ -46,14 +46,19 @@ if __name__=='__main__':
     data_path = 'data/'
     perform_raw, rating, test_raw = load_data(data_path)
     # perform_raw, test_raw = mk_sid(perform_raw,test_raw)
-    train, test, y_km, train_len = preprocess(perform_raw,test_raw,0.03,3,inner=False) # train, test 받아서 쓰면 돼
+    train, test, y_km, train_len= preprocess(perform_raw,test_raw,0.03,3,inner=False) # train, test 받아서 쓰면 돼
     raw_data = mk_statistics_var(train,test)
     data = mk_trainset(raw_data)
-    train, val = clustering(data,y_km,train_len)
-    predict(train,val,3)
+    train, val, mean, std= clustering(data,y_km,train_len)
+    predict(train,val,3,mean,std)
 
 
-
+sns.boxplot(train[train['kmeans']==0]['sales'])
+sns.boxplot(train[train['kmeans']==1]['sales'])
+sns.boxplot(train[train['kmeans']==2]['sales'])
+sns.boxplot(val[val['kmeans']==0]['sales'])
+sns.boxplot(val[val['kmeans']==1]['sales'])
+sns.boxplot(val[val['kmeans']==2]['sales'])
 
 
 
