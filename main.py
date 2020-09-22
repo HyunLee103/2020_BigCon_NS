@@ -1,4 +1,4 @@
-from lightgbm.callback import early_stopping
+from lightgbm.callback import early_stopping, reset_parameter
 from pandas.io.pytables import Term
 from sklearn import dummy
 from util import load_data,mk_sid,preprocess,mk_statistics_var,mk_trainset, metric
@@ -22,7 +22,8 @@ def boosting(X,y,X_val,y_val,robustScaler,col_sample=0.6,lr=0.04,iter=50000,six=
     real = robustScaler.inverse_transform(np.array(res['sales']).reshape(-1,1))
     pred = robustScaler.inverse_transform(np.array(res['pred']).reshape(-1,1))
     print(real.shape,pred.shape)
-    return metric(real,pred), len(res)
+
+    return metric(real,pred), len(res), pd.DataFrame({'real':real.flatten(), 'pred':pred.flatten()},columns=['real','pred'])
 
 
 def predict(X_train,val,k,robustScaler,col_sample=0.6,lr=0.04,iter=50000,six=True):
@@ -30,19 +31,33 @@ def predict(X_train,val,k,robustScaler,col_sample=0.6,lr=0.04,iter=50000,six=Tru
     predict '취급액' score only using train set(perform)
     return : RMAE score for each cluster
     """
-    origin, originlen = boosting(X_train.drop(['id','sales','kmeans'],axis=1),X_train['sales'],val.drop(['sales','kmeans','id'],axis=1),val['sales'],robustScaler,col_sample,lr,iter,six)
+    origin, originlen, tmp = boosting(X_train.drop(['id','sales','kmeans'],axis=1),X_train['sales'],val.drop(['sales','kmeans','id'],axis=1),val['sales'],robustScaler,col_sample,lr,iter,six)
     print(f'origin error : {round(origin,2)}%\n')
 
+    
     sum = 0
     total_len = 0
     for i in range(k):
         train_tem = X_train[X_train['kmeans']==i]
         val_tem = val[val['kmeans']==i]
-        score,len = boosting(train_tem.drop(['sales','kmeans','id'],axis=1),train_tem['sales'],val_tem.drop(['sales','kmeans','id'],axis=1),val_tem['sales'],robustScaler,col_sample,lr,iter,six)
+
+        score,len,pred = boosting(train_tem.drop(['sales','kmeans','id'],axis=1),train_tem['sales'],val_tem.drop(['sales','kmeans','id'],axis=1),val_tem['sales'],robustScaler,col_sample,lr,iter,six)
+        
+        results = pd.concat([val_tem.reset_index(drop=True),pred],axis=1)
+        results['MAPE'] = pred.apply(lambda x: metric(x['real'],x['pred']),axis=1)
+
+        if i == 0:
+            fin_results = results.copy()
+
+        else:
+            fin_results = pd.concat([fin_results,results])
+            
         sum += (score * len)
         total_len += len
         print(f'Cluster_{i} : {round(score,2)}%\n')
     print(f'Total error : {round(sum/total_len,2)}%')
+
+    return fin_results
 
 
 # excution
@@ -54,9 +69,8 @@ if __name__=='__main__':
     raw_data = mk_statistics_var(train,test)
     data = mk_trainset(raw_data)
     train, val, robustScaler = clustering(data,y_km,train_len)
-    predict(train,val,3,robustScaler)
-
-
+    
+    results = predict(train,val,3,robustScaler)
 
 
 """
