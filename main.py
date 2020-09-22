@@ -10,15 +10,17 @@ import numpy as np
 import pandas as pd
 
 
-def boosting(X,y,X_val,y_val,col_sample=0.6,lr=0.04,iter=1500,six=True):
+def boosting(X,y,X_val,y_val,col_sample=0.6,lr=0.04,iter=50000,six=True):
 
     model_lgb = LGBMRegressor(subsample= 0.7, colsample_bytree= col_sample, learning_rate=lr,n_estimators=iter,random_state=2020)
-    model_lgb.fit(X,y,early_stopping_rounds = 500,eval_set = [(X_val,y_val)],verbose=False)
+    model_lgb.fit(X,y,early_stopping_rounds = 500,eval_set = [(X_val,y_val)],verbose=True)
     pred_lgb = model_lgb.predict(X_val)
     
     res = pd.concat([y_val.reset_index(drop=True),pd.DataFrame(pred_lgb,columns=['pred'])],axis=1)
+    res = res[res['sales'] != 0]
     res['score'] = res.apply(lambda x : scoring(x['sales'],x['pred']),axis=1)
     return res['score'].mean(), len(res)
+
 
 def predict(X_train,val,k,col_sample=0.6,lr=0.04,iter=1500,six=True):
     """
