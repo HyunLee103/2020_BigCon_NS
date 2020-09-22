@@ -155,7 +155,7 @@ def km_clust(x, k, var=['취급액'],inner=3):
         object.set_index('index')
         left.set_index('index')
         res = pd.concat([object.set_index('index'),left.set_index('index')]).sort_index()
-
+        
         return pd.concat([x,res['kmeans']],axis=1)
     else:
         return pd.concat([x,Z['kmeans']],axis=1)
@@ -178,6 +178,7 @@ def preprocess(perform,question,drop_rate,k,inner=False):
     train.reset_index(inplace=True,drop=True)
 
     train = km_clust(train,k,inner=inner)
+    print(train['kmeans'].value_counts())
     train.rename(columns={'취급액':'sales'},inplace=True)
     test.rename(columns={'취급액':'sales'},inplace=True)
 

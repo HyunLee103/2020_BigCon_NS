@@ -1,32 +1,36 @@
 from lightgbm.callback import early_stopping
 from pandas.io.pytables import Term
 from sklearn import dummy
-from util import load_data,mk_sid,preprocess,mk_statistics_var,mk_trainset, metric, scoring
+from util import load_data,mk_sid,preprocess,mk_statistics_var,mk_trainset, metric
 from clustering import clustering
 from sklearn.model_selection import train_test_split
 from lightgbm import LGBMRegressor
 from dim_reduction import train_AE,by_AE,by_PCA
 import pandas as pd
 import seaborn as sns
-
 import numpy as np
 
-def boosting(X,y,X_val,y_val,mean,std,col_sample=0.6,lr=0.04,iter=50000,six=True):
+
+
+def boosting(X,y,X_val,y_val,robustScaler,col_sample=0.6,lr=0.04,iter=50000,six=True):
 
     model_lgb = LGBMRegressor(subsample= 0.7, colsample_bytree= col_sample, learning_rate=lr,n_estimators=iter,random_state=2020)
     model_lgb.fit(X,y,early_stopping_rounds = 500,eval_set = [(X_val,y_val)],verbose=False)
     pred_lgb = model_lgb.predict(X_val)
     res = pd.concat([y_val.reset_index(drop=True),pd.DataFrame(pred_lgb,columns=['pred'])],axis=1)
+    # print(res)
+    real = robustScaler.inverse_transform(np.array(res['sales']).reshape(-1,1))
+    pred = robustScaler.inverse_transform(np.array(res['pred']).reshape(-1,1))
+    print(real.shape,pred.shape)
+    return metric(real,pred), len(res)
 
-    return metric(res['sales']*np.array(std)+np.array(mean),res['pred']*np.array(std)+np.array(mean)), len(res)
 
-
-def predict(X_train,val,k,mean,std,col_sample=0.6,lr=0.04,iter=50000,six=True):
+def predict(X_train,val,k,robustScaler,col_sample=0.6,lr=0.04,iter=50000,six=True):
     """
     predict '취급액' score only using train set(perform)
     return : RMAE score for each cluster
     """
-    origin, originlen = boosting(X_train.drop(['id','sales','kmeans'],axis=1),X_train['sales'],val.drop(['sales','kmeans','id'],axis=1),val['sales'],mean,std,col_sample,lr,iter,six)
+    origin, originlen = boosting(X_train.drop(['id','sales','kmeans'],axis=1),X_train['sales'],val.drop(['sales','kmeans','id'],axis=1),val['sales'],robustScaler,col_sample,lr,iter,six)
     print(f'origin error : {round(origin,2)}%\n')
 
     sum = 0
@@ -34,7 +38,7 @@ def predict(X_train,val,k,mean,std,col_sample=0.6,lr=0.04,iter=50000,six=True):
     for i in range(k):
         train_tem = X_train[X_train['kmeans']==i]
         val_tem = val[val['kmeans']==i]
-        score,len = boosting(train_tem.drop(['sales','kmeans','id'],axis=1),train_tem['sales'],val_tem.drop(['sales','kmeans','id'],axis=1),val_tem['sales'],mean,std,col_sample,lr,iter,six)
+        score,len = boosting(train_tem.drop(['sales','kmeans','id'],axis=1),train_tem['sales'],val_tem.drop(['sales','kmeans','id'],axis=1),val_tem['sales'],robustScaler,col_sample,lr,iter,six)
         sum += (score * len)
         total_len += len
         print(f'Cluster_{i} : {round(score,2)}%\n')
@@ -49,8 +53,13 @@ if __name__=='__main__':
     train, test, y_km, train_len= preprocess(perform_raw,test_raw,0.03,3,inner=False) # train, test 받아서 쓰면 돼
     raw_data = mk_statistics_var(train,test)
     data = mk_trainset(raw_data)
-    train, val, mean, std= clustering(data,y_km,train_len)
-    predict(train,val,3,mean,std)
+    train, val, robustScaler = clustering(data,y_km,train_len)
+    predict(train,val,3,robustScaler)
+
+
+
+
+"""
 
 
 sns.boxplot(train[train['kmeans']==0]['sales'])
@@ -60,7 +69,7 @@ sns.boxplot(val[val['kmeans']==0]['sales'])
 sns.boxplot(val[val['kmeans']==1]['sales'])
 sns.boxplot(val[val['kmeans']==2]['sales'])
 
-
+"""
 
 
 
