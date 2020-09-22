@@ -65,6 +65,17 @@ if __name__=='__main__':
 
     orgin_pred,k_pred = predict(train,val,3)
     
+    metric(k_pred['sales_by_sid'],k_pred['pred'])
+
+    # 얍
+
+    sales
+    k = sales.groupby(['show_id','상품코드'])['sales'].mean().reset_index()
+    sales = sales.dropna()
+    k = pd.merge(sales,k,on=['show_id','상품코드'],how='left')
+    metric(k['sales_x'],k['sales_y'])
+
+    
     # 함수화 해야
     orgin_ans = pd.merge(sales,orgin_pred,left_on=['show_id','상품코드'],right_on=['show_id','item_code'],how='left')
     orgin_ans = orgin_ans.dropna()
