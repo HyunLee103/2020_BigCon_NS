@@ -413,6 +413,8 @@ class mk_var():
         self.data = self.mk_pname_var()
         self.data = self.mk_order_var()
 
+        self.data.fillna(0,inplace=True)
+
         return self.data
 
 # ~ 별 평균, 분산, 비율, 중위수, rank
@@ -426,13 +428,11 @@ class mk_stat_var():
 
         sales = self.train.groupby('상품군')['sales'].describe()[['mean','std','50%']]
         sales.rename(columns={'mean':'cate_sales_mean', 'std':'cate_sales_std', '50%':'cate_sales_med'},inplace=True)
-        #sales['cate_sales_ratio'] = sales['cate_sales_mean'].map(lambda x: x / sales['cate_sales_mean'].sum())
-        sales['cate_sales_rank'] = sales['cate_sales_mean'].rank(ascending=False)
+        sales['cate_sales_rank'] = sales['cate_sales_mean'].rank(ascending=False,method='dense')
 
         price = self.data.groupby('상품군')['판매단가'].describe()[['mean','std','50%']]
         price.rename(columns={'mean':'cate_price_mean', 'std':'cate_price_std', '50%':'cate_price_med'},inplace=True)
-        #price['cate_price_ratio'] = price['cate_price_mean'].map(lambda x: x / price['cate_price_mean'].sum())
-        price['cate_price_rank'] = price['cate_price_mean'].rank(ascending=False)
+        price['cate_price_rank'] = price['cate_price_mean'].rank(ascending=False,method='dense')
 
         self.data = pd.merge(self.data,sales,on='상품군',how='left')
         self.data = pd.merge(self.data,price,on='상품군',how='left')
@@ -444,8 +444,7 @@ class mk_stat_var():
 
         sales = self.train.groupby('day')['sales'].describe()[['mean','std','50%']]
         sales.rename(columns={'mean':'day_sales_mean', 'std':'day_sales_std', '50%':'day_sales_med'},inplace=True)
-        #sales['day_sales_ratio'] = sales['day_sales_mean'].map(lambda x: x / sales['day_sales_mean'].sum())
-        sales['day_sales_rank'] = sales['day_sales_mean'].rank(ascending=False)
+        sales['day_sales_rank'] = sales['day_sales_mean'].rank(ascending=False,method='dense')
 
         return pd.merge(self.data,sales,on='day', how='left')
 
@@ -453,24 +452,63 @@ class mk_stat_var():
 
         sales = self.train.groupby('hour')['sales'].describe()[['mean','std','50%']]
         sales.rename(columns={'mean':'hour_sales_mean', 'std':'hour_sales_std', '50%':'hour_sales_med'},inplace=True)
-        #sales['hour_sales_ratio'] = sales['hour_sales_mean'].map(lambda x: x / sales['hour_sales_mean'].sum())
-        sales['hour_sales_rank'] = sales['hour_sales_mean'].rank(ascending=False)
+        sales['hour_sales_rank'] = sales['hour_sales_mean'].rank(ascending=False,method='dense')
 
         return pd.merge(self.data,sales,on='hour',how='left')
 
+    
     def mk_min_var(self):
 
         sales = self.train.groupby('min')['sales'].describe()[['mean','std','50%']]
         sales.rename(columns={'mean':'min_sales_mean', 'std':'min_sales_std', '50%':'min_sales_med'},inplace=True)
-        #sales['min_sales_ratio'] = sales['min_sales_mean'].map(lambda x: x / sales['min_sales_mean'].sum())
-        sales['min_sales_rank'] = sales['min_sales_mean'].rank(ascending=False)
+        sales['min_sales_rank'] = sales['min_sales_mean'].rank(ascending=False,method='dense')
 
         return pd.merge(self.data, sales, on='min', how='left')
+    
+
+    def mk_mcode_var(self):
+
+        sales = self.train.groupby('마더코드')['sales'].describe()[['mean','std','50%']]
+        sales.rename(columns={'mean':'mcode_sales_mean', 'std':'mcode_sales_std', '50%':'mcode_sales_med'},inplace=True)
+        sales['mcode_sales_rank'] = sales['mcode_sales_mean'].rank(ascending=False,method='dense')
+
+        return pd.merge(self.data, sales, on='마더코드', how='left')
+
+    def mk_pcode_var(self):
+
+        sales = self.train.groupby('상품코드')['sales'].describe()[['mean','std','50%']]
+        sales.rename(columns={'mean':'pcode_sales_mean', 'std':'pcode_sales_std', '50%':'pcode_sales_med'},inplace=True)
+        sales['pcode_sales_rank'] = sales['pcode_sales_mean'].rank(ascending=False,method='dense')
+
+        return pd.merge(self.data, sales, on='상품코드', how='left')
+
+    '''
+    def mk_order_var(self):
+
+        sales = self.train.groupby('show_norm_order_gr')['sales'].describe()[['mean','std','50%']]
+        sales.rename(columns={'mean':'order_sales_mean', 'std':'order_sales_std', '50%':'order_sales_med'},inplace=True)
+        sales['order_sales_rank'] = sales['order_sales_mean'].rank(ascending=False,method='dense')
+
+        return pd.merge(self.data,sales, on='show_norm_order_gr', how='left')
+    '''
+
+    def mk_sid_var(self):
+
+        sales = self.train.groupby('show_id')['sales'].describe()[['mean','std','50%']]
+        sales.rename(columns={'mean':'sid_sales_mean', 'std':'sid_sales_std', '50%':'sid_sales_med'},inplace=True)
+        sales['sid_sales_rank'] = sales['sid_sales_mean'].rank(ascending=False,method='dense')
+
+        return pd.merge(self.data, sales, on='show_id', how='left')
 
     def __call__(self):
         self.data = self.mk_cate_var()
         self.data = self.mk_day_var()
         self.data = self.mk_hour_var()
         self.data = self.mk_min_var()
+        self.data = self.mk_mcode_var()
+        self.data = self.mk_pcode_var()
+        #self.data = self.mk_order_var()
+
+        self.data.fillna(0,inplace=True)
 
         return self.data
