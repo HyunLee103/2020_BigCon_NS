@@ -482,7 +482,7 @@ class mk_stat_var():
 
         return pd.merge(self.data, sales, on='상품코드', how='left')
 
-    '''
+    
     def mk_order_var(self):
 
         sales = self.train.groupby('show_norm_order_gr')['sales'].describe()[['mean','std','50%']]
@@ -490,15 +490,43 @@ class mk_stat_var():
         sales['order_sales_rank'] = sales['order_sales_mean'].rank(ascending=False,method='dense')
 
         return pd.merge(self.data,sales, on='show_norm_order_gr', how='left')
-    '''
 
-    def mk_sid_var(self):
+    def mk_price_var(self):
 
-        sales = self.train.groupby('show_id')['sales'].describe()[['mean','std','50%']]
-        sales.rename(columns={'mean':'sid_sales_mean', 'std':'sid_sales_std', '50%':'sid_sales_med'},inplace=True)
-        sales['sid_sales_rank'] = sales['sid_sales_mean'].rank(ascending=False,method='dense')
+        def mk_price_gr(price):
 
-        return pd.merge(self.data, sales, on='show_id', how='left')
+            if price <= 39900:
+                return 0
+
+            elif 40000 <= price <=69900:
+                return 1
+
+            elif 70000 <= price <= 99900:
+                return 2
+
+            elif 100000 <= price <= 149900:
+                return 3
+
+            elif 150000 <= price <= 299900:
+                return 4
+
+            else:
+                return 5
+
+        self.train['price_gr'] = self.train['판매단가'].map(mk_price_gr)
+
+        sales = self.train.groupby('price_gr')['sales'].describe()[['mean','std','50%']]
+        sales.rename(columns={'mean':'pr_sales_mean', 'std':'pr_sales_std', '50%':'pr_sales_med'},inplace=True)
+        sales['pr_sales_rank'] = sales['pr_sales_mean'].rank(ascending=False,method='dense')
+
+        self.data['price_gr'] = self.data['판매단가'].map(mk_price_gr)
+
+        results = pd.merge(self.data,sales, on='price_gr', how='left')
+
+        del self.train['price_gr']
+        del self.data['price_gr']
+
+        return results
 
     def __call__(self):
         self.data = self.mk_cate_var()
@@ -507,7 +535,8 @@ class mk_stat_var():
         self.data = self.mk_min_var()
         self.data = self.mk_mcode_var()
         self.data = self.mk_pcode_var()
-        #self.data = self.mk_order_var()
+        self.data = self.mk_order_var()
+        self.data = self.mk_price_var()
 
         self.data.fillna(0,inplace=True)
 
