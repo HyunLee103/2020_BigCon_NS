@@ -12,6 +12,7 @@ robustScaler = RobustScaler()
 import numpy as np
 
 
+
 def clustering(data,y_km,train_len):
     """
     make cluster for train and val set using models from return of modeling func.
@@ -19,12 +20,11 @@ def clustering(data,y_km,train_len):
     """  
     X_train = data.iloc[:train_len,:]
     X_test = data.iloc[train_len:,:]
-    # mean = X_train['sales'].mean()
-    # std = X_train['sales'].std()
+
     robustScaler.fit(np.array(X_train['sales']).reshape(-1,1))
     s = robustScaler.fit(np.array(X_train['sales']).reshape(-1,1))
     X_train['sales'] = robustScaler.transform(np.array(X_train['sales']).reshape(-1,1))
-    # X_train['sales'] = (X_train['sales'] - mean)/std
+
     train_features, val_features, train_labels, val_labels = train_test_split(X_train,y_km,random_state=2020,test_size=0.08)
 
     lgb = LGBMClassifier(n_estimators=2000,learning_rate=0.04,subsample=0.8,colsample_bytree=0.5,random_state=2020,objective='multiclass')

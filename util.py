@@ -17,11 +17,11 @@ import pandas as pd
 
 
 ## load data
-def load_data(data_path,weather=False,trend=False):
+def load_data(data_path,weather=False,trend=False,query=False):
     perform_raw = pd.read_csv(os.path.join(f'{data_path}','2019_performance.csv'))
     test = pd.read_csv(os.path.join(f'{data_path}','question.csv'))
     rating = pd.read_csv(os.path.join(f'{data_path}','2019_rating.csv'),encoding='utf-8')
-
+    
     if weather:
         weather_train = pd.read_csv(os.path.join(f'{data_path}','weather_data.csv'))
         weather_test = pd.read_csv(os.path.join(f'{data_path}','weather_data_test.csv'))
@@ -32,6 +32,7 @@ def load_data(data_path,weather=False,trend=False):
         trend_test = pd.read_csv(os.path.join(f'{data_path}','shopping_trend_test.csv'))
         perform_raw = pd.concat([perform_raw,trend_train],axis=1)
         test = pd.concat([test,trend_test],axis=1)
+
 
     perform_raw.reset_index(inplace=True)
     perform_raw.rename(columns={'index':'id'},inplace=True)
@@ -239,6 +240,8 @@ def feature_impo(model,data):
     plt.tight_layout()
     plt.show()
     plt.savefig('lgbm_importances-01.png')
+
+
 
 
 
