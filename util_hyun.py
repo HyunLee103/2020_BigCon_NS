@@ -245,9 +245,3 @@ def feature_impo(model,data):
     plt.tight_layout()
     plt.show()
     plt.savefig('lgbm_importances-01.png')
-
-
-
-
-
-

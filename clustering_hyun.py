@@ -51,4 +51,3 @@ def clustering(data,y_km,train_len,test=False):
 
         return train, val_features, s
 
-
