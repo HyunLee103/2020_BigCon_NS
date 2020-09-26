@@ -2,6 +2,7 @@ from lightgbm.callback import early_stopping, reset_parameter
 from pandas.core.arrays import categorical
 from pandas.io.pytables import Term
 from sklearn import dummy
+from make_var import make_variable
 from util import load_data,mk_sid,preprocess,mk_statistics_var,mk_trainset, metric
 from clustering import clustering
 from sklearn.model_selection import train_test_split
@@ -61,8 +62,6 @@ def boosting_2(pop,inference,robustScaler,col_sample=0.6,lr=0.04,iter=50000,test
         return metric(real,pred), pd.DataFrame({'real':real.flatten(), 'pred':pred.flatten()},columns=['real','pred']), model_lgb
 
 
-
-
 def predict(X_train,val,k,robustScaler,col_sample=0.6,lr=0.04,iter=50000,inference=True):
     """
     predict '취급액' score only using train set(perform)
@@ -120,6 +119,9 @@ def second_predict(input,robustScaler,train,val):
 if __name__=='__main__': 
     data_path = 'data/'
     perform_raw, rating, test_raw = load_data(data_path,trend=False,weather=False)
+    train_var, test_var = make_variable(perform_raw,test_raw,rating)
+
+
     # perform_raw, test_raw = mk_sid(perform_raw,test_raw)
     train, test, y_km, train_len= preprocess(perform_raw,test_raw,0.03,3,inner=False) # train, test 받아서 쓰면 돼
     # raw_data = mk_statistics_var(train,test)
@@ -127,7 +129,6 @@ if __name__=='__main__':
     train, val, robustScaler = clustering(data,y_km,train_len)
     
     tem_result, clf = predict(train,val,3,robustScaler,inference=True,iter=10000)
-
     clf = second_fit(tem_result,robustScaler,train,val)
 
 

@@ -427,11 +427,11 @@ class mk_stat_var():
     def mk_cate_var(self):
 
         sales = self.train.groupby('상품군')['sales'].describe()[['mean','std','50%']]
-        sales.rename(columns={'mean':'cate_sales_mean', 'std':'cate_sales_std', '50%':'cate_sales_med'},inplace=True)
+        sales.rename(columns={'mean':'cate_sales_mean', 'std':'cate_sales_std', '50%':'cate_sales_med'},axis=1,inplace=True)
         sales['cate_sales_rank'] = sales['cate_sales_mean'].rank(ascending=False,method='dense')
 
         price = self.data.groupby('상품군')['판매단가'].describe()[['mean','std','50%']]
-        price.rename(columns={'mean':'cate_price_mean', 'std':'cate_price_std', '50%':'cate_price_med'},inplace=True)
+        price.rename(columns={'mean':'cate_price_mean', 'std':'cate_price_std', '50%':'cate_price_med'},axis=1,inplace=True)
         price['cate_price_rank'] = price['cate_price_mean'].rank(ascending=False,method='dense')
 
         self.data = pd.merge(self.data,sales,on='상품군',how='left')
@@ -443,7 +443,7 @@ class mk_stat_var():
     def mk_day_var(self):
 
         sales = self.train.groupby('day')['sales'].describe()[['mean','std','50%']]
-        sales.rename(columns={'mean':'day_sales_mean', 'std':'day_sales_std', '50%':'day_sales_med'},inplace=True)
+        sales.rename(columns={'mean':'day_sales_mean', 'std':'day_sales_std', '50%':'day_sales_med'},axis=1,inplace=True)
         sales['day_sales_rank'] = sales['day_sales_mean'].rank(ascending=False,method='dense')
 
         return pd.merge(self.data,sales,on='day', how='left')
@@ -451,7 +451,7 @@ class mk_stat_var():
     def mk_hour_var(self):
 
         sales = self.train.groupby('hour')['sales'].describe()[['mean','std','50%']]
-        sales.rename(columns={'mean':'hour_sales_mean', 'std':'hour_sales_std', '50%':'hour_sales_med'},inplace=True)
+        sales.rename(columns={'mean':'hour_sales_mean', 'std':'hour_sales_std', '50%':'hour_sales_med'},axis=1,inplace=True)
         sales['hour_sales_rank'] = sales['hour_sales_mean'].rank(ascending=False,method='dense')
 
         return pd.merge(self.data,sales,on='hour',how='left')
@@ -460,7 +460,7 @@ class mk_stat_var():
     def mk_min_var(self):
 
         sales = self.train.groupby('min')['sales'].describe()[['mean','std','50%']]
-        sales.rename(columns={'mean':'min_sales_mean', 'std':'min_sales_std', '50%':'min_sales_med'},inplace=True)
+        sales.rename(columns={'mean':'min_sales_mean', 'std':'min_sales_std', '50%':'min_sales_med'},axis=1,inplace=True)
         sales['min_sales_rank'] = sales['min_sales_mean'].rank(ascending=False,method='dense')
 
         return pd.merge(self.data, sales, on='min', how='left')
