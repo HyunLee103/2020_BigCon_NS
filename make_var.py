@@ -1,5 +1,4 @@
 import numpy as np
-from numpy.lib.mixins import _inplace_binary_method
 import pandas as pd
 from datetime import datetime, timedelta
 import re
@@ -71,7 +70,9 @@ class mk_var():
         self.rating['시간대'] = self.rating['시간대'].map(lambda x: datetime.strptime(x,'%H:%M').time())
         self.rating= self.rating.set_index('시간대')
         self.rating.columns = pd.to_datetime(self.rating.columns,format='%Y-%m-%d')
+        self.rating.columns = self.rating.columns.date
         self.rating.reset_index(inplace=True)
+        
 
         # 노출(분) 수정 > 덮어쓰기
         self.train['노출(분)'] = self.train['노출(분)'].replace(0, method='ffill')
@@ -102,27 +103,27 @@ class mk_var():
                 return 0 # 마지막 방송이 20년 1월 1일 자정 넘김
 
             else:
-                dayrating = self.rating.loc[:,['시간대',str(date.date())]]
+                dayrating = self.rating.loc[:,['시간대',date.date()]]
 
                 start_idx = time_idx[date.time()]
                 end = date + timedelta(minutes=length)
                 end_idx = time_idx[end.time()]
 
-                return self.rating.loc[start_idx:end_idx, str(date.date())].mean()
+                return self.rating.loc[start_idx:end_idx, date.date()].mean()
 
         tr['rating'] = tr.apply(lambda x: cal_ratio(x['방송일시'],x['노출(분)']),axis=1)
 
         # 2. test
 
-        rating_tmp = self.rating.copy().transpose()
+        rating_tmp = self.rating.copy().set_index('시간대').transpose()
         rating_tmp = rating_tmp.rename_axis('방송일시').reset_index()
 
         rating_tmp['방송요일'] = rating_tmp['방송일시'].map(lambda x: x.weekday())
 
         del rating_tmp['방송일시']
 
-        day_time = rating_tmp.groupby('방송요일').apply(np.mean)
-        del day_time['방송요일']
+        day_time = rating_tmp.groupby('방송요일').apply(np.mean).iloc[:,:-1]
+        
         day_time = day_time.transpose()
         day_time.reset_index(inplace=True)
 
@@ -131,7 +132,6 @@ class mk_var():
         def cal_ratio(date,length):
 
             dayrating = day_time.loc[:,date.weekday()]
-            dayrating[0:3].mean()
             
             start_idx = time_idx[date.time()]
             end = date + timedelta(minutes=length)
@@ -139,11 +139,19 @@ class mk_var():
 
             return dayrating[start_idx:end_idx].mean()
 
-        te['rating'] = te.apply(lambda x: cal_ratio(x['방송일시'],x['노출(분)']))
+        te['rating'] = te.apply(lambda x: cal_ratio(x['방송일시'],x['노출(분)']),axis=1)
 
         dat = pd.concat([tr,te])
 
         return dat['rating']
+
+    def make_rating_var(self):
+
+        sid_rating = self.data[['show_id','rating']]
+        sid_rating = sid_rating.groupby('show_id')['rating'].mean().reset_index()
+        sid_rating.rename(columns = {'rating':'sid_rating'}, inplace=True)
+
+        return pd.merge(self.data, sid_rating, on='show_id',how='left')
 
     # 1. 방송일시) month, day, holiday,
     def make_datetime_var(self):
@@ -405,15 +413,27 @@ class mk_var():
 
         return self.data
 
+    def make_salespower(self):
+
+        self.data['salespower'] = self.data.apply(lambda x: x['s_normorder'] * x['노출(분)'], axis=1)
+
+        return self.data
+
+
     def __call__(self):
 
-        #self.data['rating'] = self.mk_rating()
+        self.data['rating'] = self.mk_rating()
         self.data['price_log'] = self.data['판매단가']
+
+        self.data = self.make_rating_var()
+
         self.data = self.make_datetime_var()
         self.data = self.make_mcode_var()
         self.data = self.make_icode_var()
         self.data = self.make_iname_var()
         self.data = self.make_order_var()
+
+        self.data = self.make_salespower()
         
         self.data = self.make_cate_stat()
         self.data = self.make_day_stat()
