@@ -148,8 +148,8 @@ if __name__=='__main__':
     data_path = 'data/'
     perform_raw, rating, test_raw = load_data(data_path,trend=False,weather=False,query=False)
     train_var, test_var = make_variable(perform_raw,test_raw,rating)
-    raw_data, y_km, train_len= preprocess(train_var,test_var,0.03,3,inner=False) # train, test 받아서 쓰면 돼
-    data = mk_trainset(raw_data,categorical=True)
+    raw_data, y_km, train_len= preprocess(train_var,test_var,0.03,3,inner=False) 
+    data = mk_trainset(raw_data,categorical=True) # lgbm만 categorical = True, 나머지 모델은 False -> one-hot encoding
     train, val, robustScaler = clustering(data,y_km,train_len)
 
 
