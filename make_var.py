@@ -413,6 +413,13 @@ class mk_var():
 
         return self.data
 
+    def make_salespower(self):
+
+        self.data['salespower'] = self.data.apply(lambda x: x['s_normorder'] * x['노출(분)'], axis=1)
+
+        return self.data
+
+
     def __call__(self):
 
         self.data['rating'] = self.mk_rating()
@@ -425,6 +432,8 @@ class mk_var():
         self.data = self.make_icode_var()
         self.data = self.make_iname_var()
         self.data = self.make_order_var()
+
+        self.data = self.make_salespower()
         
         self.data = self.make_cate_stat()
         self.data = self.make_day_stat()
