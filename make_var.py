@@ -419,7 +419,45 @@ class mk_var():
 
         return self.data
 
+    def make_pricedivision(self):
 
+        tmp = self.data[['show_id','상품군','판매단가']]
+
+        tmp2 = tmp.groupby('show_id')['판매단가'].apply(lambda x: sorted(set(x))[-1]).reset_index()
+        tmp2.rename({'판매단가':'최고가'},axis=1,inplace=True)
+        tmp2.drop_duplicates(['show_id'],inplace=True)
+
+        tmp3 = tmp.groupby('show_id')['판매단가'].apply(lambda x: sorted(set(x))[0]).reset_index()
+        tmp3.rename({'판매단가':'최저가'},axis=1,inplace=True)
+        tmp3.drop_duplicates(['show_id'],inplace=True)
+
+        sid_minmax = {sid:(min,max) for sid, min,max in zip(tmp2.show_id,tmp2.최고가,tmp3.최저가)}
+
+        def find_minmax(cate,sid,price):
+            if cate in ['건강기능','농수축','생활용품','속옷','의류','이미용']:
+
+                min = sid_minmax.get(sid)[0]
+                max = sid_minmax.get(sid)[1]
+
+                med = (min+max)/2
+
+                if max is not None:
+                    if price <= med:
+                        return (price-max)/med
+
+                    else:
+                        return (price-min)/med
+
+                else:
+                    return 0
+
+            else:
+                return 0
+
+        self.data['division_minmax'] = self.data.apply(lambda x: find_minmax(x['상품군'],x['show_id'],x['판매단가']),axis=1)
+        
+        return self.data
+    
     def __call__(self):
 
         self.data['rating'] = self.mk_rating()
@@ -432,8 +470,6 @@ class mk_var():
         self.data = self.make_icode_var()
         self.data = self.make_iname_var()
         self.data = self.make_order_var()
-
-        self.data = self.make_salespower()
         
         self.data = self.make_cate_stat()
         self.data = self.make_day_stat()
@@ -444,6 +480,10 @@ class mk_var():
 
         self.data = self.make_code_to_var()
 
+        self.data = self.make_salespower()
+        self.data = self.make_pricedivision()
+        self.data = 
+
         self.data.rename(columns={'노출(분)':'length','취급액':'sales','상품군':'cate','마더코드':'mcode', '상품코드':'icode'},inplace=True)
 
         tr = self.data[self.data['istrain']==1]
@@ -451,6 +491,9 @@ class mk_var():
 
         del tr['istrain']
         del te['istrain']
+
+        del tr['show_id']
+        del te['show_id']
 
         return tr, te
 

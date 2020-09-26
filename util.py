@@ -30,6 +30,12 @@ def load_data(data_path,weather=False,trend=False,query=False):
         trend_test = pd.read_csv(os.path.join(f'{data_path}','shopping_trend_test.csv'))
         perform_raw = pd.concat([perform_raw,trend_train],axis=1)
         test = pd.concat([test,trend_test],axis=1)
+    if query:
+        query_train = pd.read_csv(os.path.join(f'{data_path}','query_real_final.csv'))
+        query_test = pd.read_csv(os.path.join(f'{data_path}','test_real_final.csv'))
+        perform_raw = pd.concat([perform_raw,query_train],axis=1)
+        test = pd.concat([test,query_test],axis=1)
+    
     
 
     perform_raw.reset_index(inplace=True)
