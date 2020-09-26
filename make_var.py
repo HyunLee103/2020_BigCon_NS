@@ -401,7 +401,7 @@ class mk_var():
 
         self.data['상품코드'] = self.data['상품코드'].astype(int)
         self.data['상품코드'] = self.data['상품코드'].astype('str').apply(lambda x: x[2:])
-        self.data['마더코드'] = self.data['마더코드'].astype(int)
+        self.data['상품코드'] = self.data['상품코드'].astype(int)
 
         return self.data
 

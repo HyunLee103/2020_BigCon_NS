@@ -126,7 +126,7 @@ return : dataset that dropped outlier
 def del_outlier(x,p):
     clf=IsolationForest(contamination=float(p),
                         max_features=1.0, bootstrap=False, n_jobs=-1, random_state=2020, verbose=0)
-    tem = x['취급액'].reset_index()
+    tem = x['sales'].reset_index()
     clf.fit(tem)
     tem['anomaly'] = clf.predict(tem)
     return x[tem['anomaly']==1]
@@ -138,7 +138,7 @@ x : dataset
 k : # of cluster
 return : 기존 dataset에 kmeans라는 컬럼 추가한 df
 """
-def km_clust(x, k, var=['취급액'],inner=3):
+def km_clust(x, k, var=['sales'],inner=3):
     # mean = x[var].mean()
     # std = x[var].std()
     # x[var] = (x[var] - x[var].mean())/x[var].std()
@@ -150,7 +150,7 @@ def km_clust(x, k, var=['취급액'],inner=3):
     # inner cluster
     if inner!=0:
         object = Z[Z['kmeans']==1]
-        K = Z[Z['kmeans']==1]['취급액'].reset_index()
+        K = Z[Z['kmeans']==1]['sales'].reset_index()
         left = Z[Z['kmeans']!=1]
         km = KMeans(n_clusters=inner,random_state=2020)
         km.fit(K)
@@ -173,7 +173,7 @@ def preprocess(perform,question,drop_rate,k,inner=False):
     perform.reset_index(inplace=True,drop=True)
     question.reset_index(inplace=True,drop=True)
 
-    train = perform[perform['취급액']!=0]
+    train = perform[perform['sales']!=0]
     train.reset_index(inplace=True,drop=True)
 
     train = del_outlier(train,drop_rate)
@@ -181,13 +181,14 @@ def preprocess(perform,question,drop_rate,k,inner=False):
 
     train = km_clust(train,k,inner=inner)
     print(train['kmeans'].value_counts())
-    train.rename(columns={'취급액':'sales'},inplace=True)
-    question.rename(columns={'취급액':'sales'},inplace=True)
 
     y_km = train[['kmeans']]
     train = train.drop(['kmeans'],axis=1)
 
-    return train, question, y_km, len(train)
+    raw_data = pd.concat([train,question]).reset_index(drop=True)
+
+    return raw_data, y_km, len(train)
+
 
 
 
@@ -201,8 +202,7 @@ def mk_trainset(data,dummy = ['gender','pay'],categorical=True):
     encoder = LabelEncoder()
     encoder.fit(data['cate'])
     data['cate'] = encoder.transform(data['cate'])
-
-    all_cate = ['day','hour','min','mcode_freq_gr','show_order','gender','pay','cate']
+    all_cate = ['day','hour','min','mcode_freq_gr','s_order','gender','pay','cate']
     left_cate = [x for x in all_cate if x not in dummy]
 
     if categorical:
@@ -218,7 +218,7 @@ def mk_trainset(data,dummy = ['gender','pay'],categorical=True):
         for var in left_cate:
             data[var] = data[var].astype('category')
 
-    data = data.drop(['방송일시','상품명','판매단가','length_raw'],axis=1)
+    data = data.drop(['방송일시','상품명','판매단가'],axis=1)
 
     return data
 

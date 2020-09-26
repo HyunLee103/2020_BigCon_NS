@@ -3,7 +3,7 @@ from pandas.core.arrays import categorical
 from pandas.io.pytables import Term
 from sklearn import dummy
 from make_var import make_variable
-from util import load_data,mk_sid,preprocess,mk_statistics_var,mk_trainset, metric
+from util import load_data,preprocess,mk_trainset, metric
 from clustering import clustering
 from sklearn.model_selection import train_test_split
 from lightgbm import LGBMRegressor
@@ -120,15 +120,12 @@ if __name__=='__main__':
     data_path = 'data/'
     perform_raw, rating, test_raw = load_data(data_path,trend=False,weather=False)
     train_var, test_var = make_variable(perform_raw,test_raw,rating)
-    train, test, y_km, train_len= preprocess(perform_raw,test_raw,0.03,3,inner=False) # train, test 받아서 쓰면 돼
+    raw_data, y_km, train_len= preprocess(train_var,test_var,0.03,3,inner=False) # train, test 받아서 쓰면 돼
     data = mk_trainset(raw_data,categorical=True)
     train, val, robustScaler = clustering(data,y_km,train_len)
     
     tem_result, clf = predict(train,val,3,robustScaler,inference=True,iter=10000)
-    clf = second_fit(tem_result,robustScaler,train,val)
-
-
-
+    clf = second_predict(tem_result,robustScaler,train,val)
 
 
 
