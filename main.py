@@ -122,14 +122,11 @@ if __name__=='__main__':
     train_var, test_var = make_variable(perform_raw,test_raw,rating)
     raw_data, y_km, train_len= preprocess(train_var,test_var,0.03,3,inner=False) # train, test 받아서 쓰면 돼
     data = mk_trainset(raw_data,categorical=True)
+    
     train, val, robustScaler = clustering(data,y_km,train_len)
     
     tem_result, clf = predict(train,val,3,robustScaler,inference=True,iter=10000)
     clf = second_predict(tem_result,robustScaler,train,val)
-
-
-
-
 
 
 """
