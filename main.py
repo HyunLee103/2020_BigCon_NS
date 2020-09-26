@@ -15,6 +15,7 @@ import numpy as np
 from sklearn.model_selection import KFold
 from lightgbm import LGBMClassifier
 
+
 def boosting(X,y,X_val,robustScaler,col_sample=0.6,lr=0.04,iter=1500,inference=True):
     
     X_val1 = X_val[X_val['is_mcode']==1]
@@ -27,16 +28,16 @@ def boosting(X,y,X_val,robustScaler,col_sample=0.6,lr=0.04,iter=1500,inference=T
     model_lgb0 = LGBMRegressor(subsample= 0.7, colsample_bytree= col_sample, learning_rate=lr,n_estimators=iter,random_state=2020)
 
     if inference:
-        model_lgb1.fit(X.drop(['is_mcode'],axis=1),y,verbose=False)
-        model_lgb0.fit(X.drop(['is_mcode','mcode_freq','mcode_freq_gr','mcode_sales_mean','mcode_sales_std','mcode_sales_med','mcode_sales_rank','mcode_order_mean','mcode_order_med','mcode_order_rank'],axis=1),y,verbose=False)
+        model_lgb1.fit(X.drop(drop1_+['is_mcode'],axis=1),y,verbose=False)
+        model_lgb0.fit(X.drop(drop0_+['is_mcode','mcode_freq','mcode_freq_gr','mcode_sales_mean','mcode_sales_std','mcode_sales_med','mcode_sales_rank','mcode_order_mean','mcode_order_med','mcode_order_rank','mcode_order_std'],axis=1),y,verbose=False)
 
-        pred_lgb1 = model_lgb1.predict(X_val1.drop(['is_mcode','sales'],axis=1))
+        pred_lgb1 = model_lgb1.predict(X_val1.drop(drop1_+['is_mcode','sales'],axis=1))
         res1 = pd.concat([y_val1.reset_index(drop=True),pd.DataFrame(pred_lgb1,columns=['pred'])],axis=1)
         real1 = robustScaler.inverse_transform(np.array(res1['sales']).reshape(-1,1))
         pred1 = robustScaler.inverse_transform(np.array(res1['pred']).reshape(-1,1))
         print(f'real1 : {real1.shape},pred1 : {pred1.shape}')
 
-        pred_lgb0 = model_lgb0.predict(X_val0.drop(['is_mcode','sales','mcode_freq','mcode_freq_gr','mcode_sales_mean','mcode_sales_std','mcode_sales_med','mcode_sales_rank','mcode_order_mean','mcode_order_med','mcode_order_rank'],axis=1))
+        pred_lgb0 = model_lgb0.predict(X_val0.drop(drop0_+['is_mcode','sales','mcode_freq','mcode_freq_gr','mcode_sales_mean','mcode_sales_std','mcode_sales_med','mcode_sales_rank','mcode_order_mean','mcode_order_med','mcode_order_rank','mcode_order_std'],axis=1))
         res0 = pd.concat([y_val0.reset_index(drop=True),pd.DataFrame(pred_lgb0,columns=['pred'])],axis=1)
         real0 = robustScaler.inverse_transform(np.array(res0['sales']).reshape(-1,1))
         pred0 = robustScaler.inverse_transform(np.array(res0['pred']).reshape(-1,1))
@@ -47,7 +48,7 @@ def boosting(X,y,X_val,robustScaler,col_sample=0.6,lr=0.04,iter=1500,inference=T
         length = len(res0) + len(res1)
         real = np.concatenate((real1,real0))
         pred = np.concatenate((pred1,pred0))
-        return score, length, pd.DataFrame({'real':real.flatten(), 'pred':pred.flatten()},columns=['real','pred']),model_lgb0,model_lgb1
+        return score, length, pd.DataFrame({'real':real.flatten(), 'pred':pred.flatten()},columns=['real','pred']),model_lgb0
 
     else:
         model_lgb.fit(X.drop(['is_mcode'],axis=1),y)
@@ -61,29 +62,29 @@ def boosting(X,y,X_val,robustScaler,col_sample=0.6,lr=0.04,iter=1500,inference=T
 
 
 
-def boosting_2(pop,inference,robustScaler,col_sample=0.6,lr=0.04,iter=1500,test=True):
-    y = pop['sales']
-    X = pop.drop(['id','sales','kmeans'],axis=1)
-    model_lgb = LGBMRegressor(subsample= 0.7, colsample_bytree= col_sample, learning_rate=lr,n_estimators=iter,random_state=2020)
+# def boosting_2(pop,inference,robustScaler,col_sample=0.6,lr=0.04,iter=1500,test=True):
+#     y = pop['sales']
+#     X = pop.drop(['id','sales','kmeans'],axis=1)
+#     model_lgb = LGBMRegressor(subsample= 0.7, colsample_bytree= col_sample, learning_rate=lr,n_estimators=iter,random_state=2020)
     
-    if test==True:
-        model_lgb.fit(X,y)
-        pred_lgb = model_lgb.predict(inference.drop(['id','sales','kmeans'],axis=1))
-        res = pd.concat([inference.reset_index(drop=True),pd.DataFrame(pred_lgb,columns=['pred'])],axis=1)
-        real = robustScaler.inverse_transform(np.array(res['sales']).reshape(-1,1))
-        pred = robustScaler.inverse_transform(np.array(res['pred']).reshape(-1,1))
+#     if test==True:
+#         model_lgb.fit(X,y)
+#         pred_lgb = model_lgb.predict(inference.drop(['id','sales','kmeans'],axis=1))
+#         res = pd.concat([inference.reset_index(drop=True),pd.DataFrame(pred_lgb,columns=['pred'])],axis=1)
+#         real = robustScaler.inverse_transform(np.array(res['sales']).reshape(-1,1))
+#         pred = robustScaler.inverse_transform(np.array(res['pred']).reshape(-1,1))
 
-        return metric(real,pred), pd.DataFrame({'real':real.flatten(), 'pred':pred.flatten()},columns=['real','pred']), model_lgb
+#         return metric(real,pred), pd.DataFrame({'real':real.flatten(), 'pred':pred.flatten()},columns=['real','pred']), model_lgb
      
-    else:
-        X_train, X_val, y_train, y_val = train_test_split(X,y,random_state=2020)
-        model_lgb.fit(X_train,y_train,early_stopping_rounds = 1000,eval_set = [(X_val,y_val)],verbose=False)
-        pred_lgb = model_lgb.predict(X_val)
-        res = pd.concat([y_val.reset_index(drop=True),pd.DataFrame(pred_lgb,columns=['pred'])],axis=1)
-        real = robustScaler.inverse_transform(np.array(res['sales']).reshape(-1,1))
-        pred = robustScaler.inverse_transform(np.array(res['pred']).reshape(-1,1))
+#     else:
+#         X_train, X_val, y_train, y_val = train_test_split(X,y,random_state=2020)
+#         model_lgb.fit(X_train,y_train,early_stopping_rounds = 1000,eval_set = [(X_val,y_val)],verbose=False)
+#         pred_lgb = model_lgb.predict(X_val)
+#         res = pd.concat([y_val.reset_index(drop=True),pd.DataFrame(pred_lgb,columns=['pred'])],axis=1)
+#         real = robustScaler.inverse_transform(np.array(res['sales']).reshape(-1,1))
+#         pred = robustScaler.inverse_transform(np.array(res['pred']).reshape(-1,1))
 
-        return metric(real,pred), pd.DataFrame({'real':real.flatten(), 'pred':pred.flatten()},columns=['real','pred']), model_lgb
+#         return metric(real,pred), pd.DataFrame({'real':real.flatten(), 'pred':pred.flatten()},columns=['real','pred']), model_lgb
 
 
 def predict(X_train,val,k,robustScaler,col_sample=0.6,lr=0.04,iter=1500,inference=True):
@@ -91,7 +92,7 @@ def predict(X_train,val,k,robustScaler,col_sample=0.6,lr=0.04,iter=1500,inferenc
     predict '취급액' score only using train set(perform)
     return : RMAE score for each cluster
     """
-    origin, originlen, tmp, model0,model1 = boosting(X_train.drop(['id','sales','kmeans'],axis=1),X_train['sales'],val.drop(['id','kmeans'],axis=1),robustScaler,col_sample,lr,iter,inference)
+    origin, originlen, tmp, model0 = boosting(X_train.drop(['id','sales','kmeans'],axis=1),X_train['sales'],val.drop(['id','kmeans'],axis=1),robustScaler,col_sample,lr,iter,inference)
     print(f'origin error : {round(origin,2)}%\n')
 
     
@@ -101,7 +102,7 @@ def predict(X_train,val,k,robustScaler,col_sample=0.6,lr=0.04,iter=1500,inferenc
         train_tem = X_train[X_train['kmeans']==i]
         val_tem = val[val['kmeans']==i]
 
-        score,len,pred,model0_clu,model1_clu = boosting(train_tem.drop(['sales','kmeans','id'],axis=1),train_tem['sales'],val_tem.drop(['kmeans','id'],axis=1),robustScaler,col_sample,lr,iter,inference)
+        score,len,pred,model0_clu = boosting(train_tem.drop(['sales','kmeans','id'],axis=1),train_tem['sales'],val_tem.drop(['kmeans','id'],axis=1),robustScaler,col_sample,lr,iter,inference)
         if inference==True:
             results = pd.concat([val_tem.reset_index(drop=True),pred],axis=1)
         else:
@@ -123,84 +124,73 @@ def predict(X_train,val,k,robustScaler,col_sample=0.6,lr=0.04,iter=1500,inferenc
     return fin_results, model0, model1
 
 
-def second_predict(input,robustScaler,train,val):
-    neg = input.iloc[:5000,:]
-    pos = input.iloc[5000:,:].sample(n=5000,random_state=2020)
-    population = pd.concat([neg,pos]).reset_index(drop=True)
+# def second_predict(input,robustScaler,train,val):
+#     neg = input.iloc[:5000,:]
+#     pos = input.iloc[5000:,:].sample(n=5000,random_state=2020)
+#     population = pd.concat([neg,pos]).reset_index(drop=True)
 
-    result,model_l = predict(train,val,3,robustScaler,inference=True,iter=1500)
-    result_0 = result[result['kmeans']==0]
+#     result,model_l,_ = predict(train,val,3,robustScaler,inference=True,iter=1500)
+#     # result_0 = result[result['kmeans']==0]
 
-    score,res,model_lgb = boosting_2(population.iloc[:,:-3],result_0.iloc[:,:-3],robustScaler,0.55,0.04,1500,True)
-    result_0['pred_eva'] = (res['pred']*0.5 + result_0['pred']*0.5)
-    # print(f'second_fit cluster0  : {score}')
-    fin_score = (metric(result_0['pred_eva'], result_0['real'])*1467 + result[result['kmeans']!=0]['MAPE'].sum())/2746
-    print(f'final error  : {round(fin_score,2)}%')
-    return model_lgb
+#     score,res,model_lgb = boosting_2(population.iloc[:,:-3],result.iloc[:,:-3],robustScaler,0.55,0.04,1500,True)
+#     result.reset_index(drop=True, inplace=True)
+#     result.reset_index(drop=True, inplace=True)
+#     result['pred_eva'] = (res['pred']*0.5 + result['pred']*0.5)
+#     print(metric(result['real'],result['pred_eva']))
+#     # print(f'second_fit cluster0  : {score}')
+#     # fin_score = (metric(result_0['pred_eva'], result_0['real'])*1467 + result[result['kmeans']!=0]['MAPE'].sum())/2746
+#     # print(f'final error  : {round(fin_score,2)}%')
+#     return model_lgb
 
 
 # excution
 if __name__=='__main__': 
     data_path = 'data/'
-    perform_raw, rating, test_raw = load_data(data_path,trend=False,weather=False)
+    perform_raw, rating, test_raw = load_data(data_path,trend=False,weather=False,query=False)
     train_var, test_var = make_variable(perform_raw,test_raw,rating)
     raw_data, y_km, train_len= preprocess(train_var,test_var,0.03,3,inner=False) # train, test 받아서 쓰면 돼
     data = mk_trainset(raw_data,categorical=True)
     train, val, robustScaler = clustering(data,y_km,train_len)
+
+
+    drop1_  = ['min_sales_med',  'min_sales_std',  'day_sales_rank', 'min_sales_rank',
+    'min_order_rank', 'cate_sales_rank', 'cate_order_rank', 'cate_order_med',
+    'cate_sales_med', 'prime', 'min_order_std', 'min_sales_mean',
+    'day_order_rank', 'cate_order_std', 'min_order_med', 'min_order_mean',
+    'cate_sales_mean', 'cate_sales_std', 'day_order_std', 'rating',
+    'day_sales_med', 'min', 'day_order_med']
+    drop0_ = ['min_order_med', 'day_order_rank', 'min_sales_rank', 'min_sales_med',
+    'day_sales_rank', 'min_order_rank', 'cate_order_std', 'cate_sales_rank',
+    'min_sales_std', 'min_order_std', 'min', 'cate_order_rank',
+    'min_order_mean', 'rating', 'min_sales_mean', 'prime', 'cate_order_med',
+    'day_order_med']
     
     tem_result,model0,model1 = predict(train,val,3,robustScaler,inference=True,iter=1500)
-    clf_2 = second_predict(tem_result,robustScaler,train,val)
-"""
-val_features1 = val.drop(['is_mcode','id','sales','kmeans'],axis=1)
-val_features0 = val.drop(['is_mcode','id','sales','kmeans'],axis=1)
+    
+    # clf = second_predict(tem_result,robustScaler,train,val)
 
-from sklearn.inspection import permutation_importance
-r = permutation_importance(model1, val_features1, val['sales'],
-                            n_repeats=100,
-                            random_state=0)
 
-for i in r.importances_mean.argsort():
-    # if r.importances_mean[i] - 2 * r.importances_std[i] > 0:
-    print(f"{val_features.columns[i]:<8}"
-        f"{r.importances_mean[i]:.3f}"
-        f" +/- {r.importances_std[i]:.3f}")
-r.importances_mean.argsort()[::-1]
 
-k = tem_result.iloc[:,:-3].drop(['id','sales','kmeans'],axis=1)
-
-import matplotlib.pyplot as plt
-import seaborn as sns
-import warnings
-warnings.simplefilter(action='ignore', category=FutureWarning)
-
-# sorted(zip(clf.feature_importances_, X.columns), reverse=True)
-feature_imp = pd.DataFrame(sorted(zip(model_lgb.feature_importances_,val_features.columns)), columns=['Value','Feature'])
-
-plt.figure(figsize=(20, 10))
-sns.barplot(x="Value", y="Feature", data=feature_imp.sort_values(by="Value", ascending=False))
-plt.title('LightGBM Features (avg over folds)')
-plt.tight_layout()
-plt.show()
-
-plt.savefig('lgbm_importances-01.png')
+# def feature_select(val,mcode,var,model):
+#     val_sel = val[val['is_mcode']==mcode]
+#     val_sel.reset_index(drop=True,inplace=True)
+#     val_features = val_sel.drop(var,axis=1)
+#     r = permutation_importance(model, val_features, val_sel['sales'],
+#                             n_repeats=30,
+#                             random_state=0)
+#     drop = []
+#     for i in r.importances_mean.argsort():
+#     # print(i)
+#     # if r.importances_mean[i] - 2 * r.importances_std[i] > 0:
+#         drop.append(val_features.columns[i])
+#         print(f"{val_features.columns[i]:<8}"
+#             f"{r.importances_mean[i]:.3f}"
+#             f" +/- {r.importances_std[i]:.3f}")
+#     return drop
 
 
 
 
 
-from sklearn.inspection import permutation_importance
-r = permutation_importance(model_lgb, val_features, val_labels,
-                            n_repeats=100,
-                            random_state=0)
-
-for i in r.importances_mean.argsort():
-    # if r.importances_mean[i] - 2 * r.importances_std[i] > 0:
-    print(f"{val_features.columns[i]:<8}"
-        f"{r.importances_mean[i]:.3f}"
-        f" +/- {r.importances_std[i]:.3f}")
-r.importances_mean.argsort()[::-1]
-len(r.importances_mean)
 
 
-
-"""
