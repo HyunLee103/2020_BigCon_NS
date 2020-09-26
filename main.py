@@ -120,11 +120,7 @@ if __name__=='__main__':
     data_path = 'data/'
     perform_raw, rating, test_raw = load_data(data_path,trend=False,weather=False)
     train_var, test_var = make_variable(perform_raw,test_raw,rating)
-
-
-    # perform_raw, test_raw = mk_sid(perform_raw,test_raw)
     train, test, y_km, train_len= preprocess(perform_raw,test_raw,0.03,3,inner=False) # train, test 받아서 쓰면 돼
-    # raw_data = mk_statistics_var(train,test)
     data = mk_trainset(raw_data,categorical=True)
     train, val, robustScaler = clustering(data,y_km,train_len)
     

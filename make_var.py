@@ -147,9 +147,6 @@ class mk_var():
 
     # 1. 방송일시) month, day, holiday,
     def make_datetime_var(self):
-        def mk_month():
-            return self.data['방송일시'].map(lambda x: x.month)
-
         def mk_day():
             return self.data['방송일시'].map(lambda x: x.weekday())
 
@@ -193,7 +190,6 @@ class mk_var():
         def mk_min():
             return self.data['방송일시'].map(lambda x: x.minute)
             
-        self.data['month'] = mk_month()
         self.data['day'] = mk_day()
         self.data['holiday'] = mk_holiday()
         self.data['hour'] = mk_hour()
@@ -397,6 +393,18 @@ class mk_var():
 
         return self.data
 
+    def make_code_to_var(self):
+
+        self.data['마더코드'] = self.data['마더코드'].astype(int)
+        self.data['마더코드'] = self.data['마더코드'].astype('str').apply(lambda x: x[3:])
+        self.data['마더코드'] = self.data['마더코드'].astype(int)
+
+        self.data['상품코드'] = self.data['상품코드'].astype(int)
+        self.data['상품코드'] = self.data['상품코드'].astype('str').apply(lambda x: x[2:])
+        self.data['마더코드'] = self.data['마더코드'].astype(int)
+
+        return self.data
+
     def __call__(self):
 
         #self.data['rating'] = self.mk_rating()
@@ -414,7 +422,9 @@ class mk_var():
 
         self.data = self.make_order_stat()
 
-        self.data.rename({'노출(분)':'length','취급액':'sales'},inplace=True)
+        self.data = self.make_code_to_var()
+
+        self.data.rename(columns={'노출(분)':'length','취급액':'sales','상품군':'cate','마더코드':'mcode', '상품코드':'icode'},inplace=True)
 
         tr = self.data[self.data['istrain']==1]
         te = self.data[self.data['istrain']==0]
@@ -425,6 +435,7 @@ class mk_var():
         return tr, te
 
 def make_variable(perform_raw,test_raw,rating):
+    
     make_var = mk_var(perform_raw,test_raw,rating)
 
     return make_var()

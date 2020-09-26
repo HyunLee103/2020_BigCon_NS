@@ -7,7 +7,6 @@ import seaborn as sns
 plt.rc('font', family='NanumBarunGothic')
 from sklearn.ensemble import IsolationForest
 from sklearn.cluster import KMeans
-from make_var_func import mk_var, mk_stat_var
 from sklearn.preprocessing import LabelEncoder
 import os
 from sklearn.decomposition import PCA
@@ -192,15 +191,7 @@ def preprocess(perform,question,drop_rate,k,inner=False):
 
 
 
-def mk_statistics_var(train,test):
-    stat_var = mk_stat_var(train,test)
-    data = stat_var()
-
-    #data.fillna(0, inplace=True) # test set 무형 data 변수
-    return data
-
-
-def mk_trainset(data,dummy = ['gender','pay','min_gr','len_gr','show_norm_order_gr'],categorical=True):
+def mk_trainset(data,dummy = ['gender','pay'],categorical=True):
     """
     select feature to make train set 
     arg : data, dummy(list that make it one-hot-encoding),catetgorical(True for lgbm, False for other models)
@@ -211,7 +202,7 @@ def mk_trainset(data,dummy = ['gender','pay','min_gr','len_gr','show_norm_order_
     encoder.fit(data['cate'])
     data['cate'] = encoder.transform(data['cate'])
 
-    all_cate = ['day','hour','min','mcode_freq_gr','show_order','gender','pay','hour_gr','min_gr','len_gr','show_norm_order_gr','cate']
+    all_cate = ['day','hour','min','mcode_freq_gr','show_order','gender','pay','cate']
     left_cate = [x for x in all_cate if x not in dummy]
 
     if categorical:
