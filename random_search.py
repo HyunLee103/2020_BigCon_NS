@@ -69,7 +69,7 @@ lgbm_params ={'n_estimators': n_estimators,
               'min_gain_to_split':min_gain_to_split
              }
 
-model_lgbm = LGBMRegressor(boosting_type='gbdt',random_state=2020)
+model_lgbm = LGBMRegressor(boosting_type='gbdt',random_state=2020, objective='mape')
 
 # Randomforest
 rf_params = {'max_depth':max_depth,
@@ -80,7 +80,7 @@ rf_params = {'max_depth':max_depth,
              'min_weight_fraction_leaf':min_weight_fraction_leaf
             }
 
-model_rf = RandomForestRegressor(bootstrap=True,random_state=2020)
+model_rf = RandomForestRegressor(bootstrap=True,random_state=2020, criterion = 'mae')
 
 # Catboost
 catb_params = {'learning_rate':learning_rate,
@@ -93,22 +93,11 @@ catb_params = {'learning_rate':learning_rate,
                'min_data_in_leaf' : min_data_in_leaf
               }
 
-model_catb = CatBoostRegressor(random_state=2020)
+model_catb = CatBoostRegressor(random_state=2020, loss_function = 'MAPE', task_type= 'GPU')
 
-
-# XGBoost
-xgb_params = {'max_depth':max_depth,
-              'learning_rate':learning_rate,
-              'gamma':gamma,
-              'min_child_weight':min_child_weight,
-              'n_estimators':n_estimators
-             }
-
-model_xgb = XGBRegressor(booster='gbtree', objective='reg:squarederror',random_state=2020)
- 
 
 # Bagging
-base_estimator = [model_lgbm, model_catb, model_rf, model_xgb]
+base_estimator = [model_lgbm, model_catb, model_rf]
 
 bagging_params ={ 'base_estimator' : base_estimator,
             'n_estimators': n_estimators,
@@ -134,8 +123,8 @@ def random_search(model, params, X_train, y_train, X_val, y_val, i, name=''):
 
     # early_stop_params
     fit_params={"early_stopping_rounds": 100,
-                "eval_metric" : "mse", 
-                "eval_set" : [[X_val, y_val]]
+                # "eval_metrics" : "MAPE", 
+                "eval_set" : (X_val, y_val)
                 }
 
     search = rnd_search.fit(X_train, y_train, **fit_params)
@@ -191,9 +180,9 @@ val_0 = val[val['kmeans'] == 0].drop(['sales']+list(set(val.columns).intersectio
 val_1 = val[val['kmeans'] == 1].drop(['sales']+list(set(val.columns).intersection(drop)), axis=1)
 val_2 = val[val['kmeans'] == 2].drop(['sales']+list(set(val.columns).intersection(drop)), axis=1)
 
-random_search(model_lgbm, lgbm_params, train_0, train_0_y, val_0, val_0_y, 0, name = 'lgbm')
-random_search(model_lgbm, lgbm_params, train_1, train_1_y, val_1, val_1_y, 1, name = 'lgbm')
-random_search(model_lgbm, lgbm_params, train_2, train_2_y, val_2, val_2_y, 2, name = 'lgbm')
+random_search(model_catb, catb_params, train_0, train_0_y, val_0, val_0_y, 0, name = 'cat')
+random_search(model_catb, catb_params, train_1, train_1_y, val_1, val_1_y, 1, name = 'cat')
+random_search(model_catb, catb_params, train_2, train_2_y, val_2, val_2_y, 2, name = 'cat')
 
 # best params load
 best_params = joblib.load('model_best_params.pkl')
