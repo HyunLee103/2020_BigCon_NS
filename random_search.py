@@ -18,6 +18,11 @@ from util import load_data,preprocess,mk_trainset, metric
 from make_var import make_variable
 from clustering import clustering
 
+# 자기가 실행할 모델 파라미터 관련 코드 실행 (그냥 다한다! : >)
+# real implement에서 lightgbm 제외하고는 mk_trainset의 category False, PCA True로 설정.
+# random_search의 모델 명, 파라미터 명 설정. (random_search 함수 내 파라미터 저장 이름도 확인. 덮어쓰기 안되게!)
+# 파라미터 로드는 맨 아래 방법처럼.
+
 n_estimators = [int(x) for x in range(10000,50000,5000)]
 importance_type = ['split','gain']
 lambda_l1 = sp_randFloat()
@@ -164,7 +169,7 @@ val_0 = val[val['kmeans'] == 0].drop(['sales'], axis=1)
 val_1 = val[val['kmeans'] == 1].drop(['sales'], axis=1)
 val_2 = val[val['kmeans'] == 2].drop(['sales'], axis=1)
 
-random_search(model_lgbm, lgbm_params, train_0, train_0_y, val_0, val_0_y)
+random_search(model_xgb, xgb_params, train_0, train_0_y, val_0, val_0_y)
 
 # best params load
 best_params = joblib.load('model_best_params.pkl')
