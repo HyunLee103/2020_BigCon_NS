@@ -153,21 +153,36 @@ raw_data, y_km, train_len= preprocess(train_var,test_var,0.03,3,inner=False) # t
 data = mk_trainset(raw_data,categorical=False,PCA=True) # lightgbm 제외하고는 categorical False로
 train, val, robustScaler = clustering(data,y_km,train_len)
 
+drop0_ = ['min_order_med', 'day_order_rank', 'min_sales_rank', 'min_sales_med',
+'day_sales_rank', 'min_order_rank', 'cate_order_std', 'cate_sales_rank',
+'min_sales_std', 'min_order_std', 'min', 'cate_order_rank',
+'min_order_mean', 'rating', 'min_sales_mean', 'prime', 'cate_order_med',
+'day_order_med']
+
+drop1_  = ['min_sales_med',  'min_sales_std',  'day_sales_rank', 'min_sales_rank',
+'min_order_rank', 'cate_sales_rank', 'cate_order_rank', 'cate_order_med',
+'cate_sales_med', 'prime', 'min_order_std', 'min_sales_mean',
+'day_order_rank', 'cate_order_std', 'min_order_med', 'min_order_mean',
+'cate_sales_mean', 'cate_sales_std', 'day_order_std', 'rating',
+'day_sales_med', 'min', 'day_order_med']
+
+drop = list(set(drop0_).intersection(drop1_))
+
 train_0_y = train[train['kmeans'] == 0]['sales']
 train_1_y = train[train['kmeans'] == 1]['sales']
 train_2_y = train[train['kmeans'] == 2]['sales']
 
-train_0 = train[train['kmeans'] == 0].drop(['sales'], axis=1)
-train_1 = train[train['kmeans'] == 1].drop(['sales'], axis=1)
-train_2 = train[train['kmeans'] == 2].drop(['sales'], axis=1)
+train_0 = train[train['kmeans'] == 0].drop(['sales']+list(set(train.columns).intersection(drop)), axis=1)
+train_1 = train[train['kmeans'] == 1].drop(['sales']+list(set(train.columns).intersection(drop)), axis=1)
+train_2 = train[train['kmeans'] == 2].drop(['sales']+list(set(train.columns).intersection(drop)), axis=1)
 
 val_0_y = val[val['kmeans'] == 0]['sales']
 val_1_y = val[val['kmeans'] == 1]['sales']
 val_2_y = val[val['kmeans'] == 2]['sales']
 
-val_0 = val[val['kmeans'] == 0].drop(['sales'], axis=1)
-val_1 = val[val['kmeans'] == 1].drop(['sales'], axis=1)
-val_2 = val[val['kmeans'] == 2].drop(['sales'], axis=1)
+val_0 = val[val['kmeans'] == 0].drop(['sales']+list(set(val.columns).intersection(drop)), axis=1)
+val_1 = val[val['kmeans'] == 1].drop(['sales']+list(set(val.columns).intersection(drop)), axis=1)
+val_2 = val[val['kmeans'] == 2].drop(['sales']+list(set(val.columns).intersection(drop)), axis=1)
 
 random_search(model_xgb, xgb_params, train_0, train_0_y, val_0, val_0_y)
 
