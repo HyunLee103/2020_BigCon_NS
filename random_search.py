@@ -1,7 +1,5 @@
 import numpy as np
-import pandas as pd
 import datetime
-from varname import nameof
 import joblib
 
 # Machine Learning Modeling
@@ -134,7 +132,7 @@ def random_search(model, params, X_train, y_train, X_val, y_val):
     print('Best Params : {}'.format(search.best_params_))
 
     print('Save Best Params...')
-    joblib.dump(search.best_params_, f'{nameof(model)}_best_params.pkl', compress = 1)
+    joblib.dump(search.best_params_, f'best_params.pkl', compress = 1)
 
     end_time = datetime.datetime.now()
 
@@ -147,7 +145,7 @@ data_path = 'data/'
 perform_raw, rating, test_raw = load_data(data_path,trend=False,weather=False)
 train_var, test_var = make_variable(perform_raw,test_raw,rating)
 raw_data, y_km, train_len= preprocess(train_var,test_var,0.03,3,inner=False) # train, test 받아서 쓰면 돼
-data = mk_trainset(raw_data,categorical=True) # lightgbm 제외하고는 categorical False로
+data = mk_trainset(raw_data,categorical=False,PCA=True) # lightgbm 제외하고는 categorical False로
 train, val, robustScaler = clustering(data,y_km,train_len)
 
 train_0_y = train[train['kmeans'] == 0]['sales']
@@ -169,5 +167,6 @@ val_2 = val[val['kmeans'] == 2].drop(['sales'], axis=1)
 random_search(model_lgbm, lgbm_params, train_0, train_0_y, val_0, val_0_y)
 
 # best params load
-best_params = joblib.load('model_lgbm_best_params.pkl')
-#~.set_params(best_params)
+best_params = joblib.load('model_best_params.pkl')
+model_lgbm = LGBMRegressor(boosting_type='gbdt',params=best_params)
+

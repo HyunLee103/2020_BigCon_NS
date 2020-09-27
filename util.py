@@ -9,6 +9,7 @@ from sklearn.ensemble import IsolationForest
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import LabelEncoder
 import os
+from dim_reduction import by_PCA
 from sklearn.decomposition import PCA
 import pandas as pd
 
@@ -129,7 +130,7 @@ def preprocess(perform,question,drop_rate,k,inner=False):
 
 
 
-def mk_trainset(data,dummy = ['gender','pay'],categorical=True):
+def mk_trainset(data,dummy = ['gender','pay'],categorical=True,PCA=False):
     """
     select feature to make train set 
     arg : data, dummy(list that make it one-hot-encoding),catetgorical(True for lgbm, False for other models)
@@ -157,7 +158,13 @@ def mk_trainset(data,dummy = ['gender','pay'],categorical=True):
 
     data = data.drop(['방송일시','상품명','판매단가'],axis=1)
 
-    return data
+    if PCA:
+        data = by_PCA(data)
+
+        return data
+    
+    else:
+        return data
 
 
 def metric(real, pred):

@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.functional as F
 from torch.utils.data import Dataset,DataLoader
 from sklearn.decomposition import PCA
+import re
 
 torch.manual_seed(2020)
 np.random.seed(2020)
@@ -105,15 +106,14 @@ def by_AE(data,components,path='AE'):
     return pd.concat([data,result],axis=1)
 
 def by_PCA(data,components=0.95):
-    reduction_cols = ['day_','hour','min','mcode_freq_gr','show_order']
-    columns = [col for col in data.columns for rcol in reduction_cols if rcol in col]
+    reduction_cols = [col for col in data.columns if any(map(str.isdigit,col))]
 
-    data = data.loc[:,columns]
+    for_PCA = data.loc[:,reduction_cols]
 
     pca = PCA(n_components=components)
-    result = pca.fit_transform(data)
+    result = pca.fit_transform(for_PCA)
 
-    data.drop(columns,axis=1,inplace=True)
+    data.drop(reduction_cols,axis=1,inplace=True)
 
     result = pd.DataFrame(result)
 
