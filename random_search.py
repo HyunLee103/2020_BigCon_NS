@@ -118,26 +118,33 @@ bagging_params ={ 'base_estimator' : base_estimator,
 
 model_bagging = BaggingRegressor()
 
-def random_search(model, params, X_train, y_train, X_val, y_val):
+def random_search(model, params, X_train, y_train, X_val, y_val, i, name=''):
     print('-'*100)
     start_time = datetime.datetime.now()
     print('Start Time : {}'.format(start_time))
-    
+ 
     rnd_search = RandomizedSearchCV(model,
                                    param_distributions=params,
-                                   n_iter = 500,
+                                   n_iter = 100,
                                    cv = 2,
                                    scoring ='neg_mean_absolute_error',
                                    verbose =2,
                                    n_jobs=2,
                                    random_state=2020)
-    
-    search = rnd_search.fit(X_train, y_train)
+
+    # early_stop_params
+    fit_params={"early_stopping_rounds": 100,
+                "eval_metric" : "mse", 
+                "eval_set" : [[X_val, y_val]]
+                }
+
+    search = rnd_search.fit(X_train, y_train, **fit_params)
+
     print('Best Estimator : {}'.format(search.best_estimator_))
     print('Best Params : {}'.format(search.best_params_))
 
     print('Save Best Params...')
-    joblib.dump(search.best_params_, f'best_params.pkl', compress = 1)
+    joblib.dump(search.best_params_, f'best_{name}_params_{i}.pkl', compress = 1)
 
     end_time = datetime.datetime.now()
 
@@ -184,9 +191,10 @@ val_0 = val[val['kmeans'] == 0].drop(['sales']+list(set(val.columns).intersectio
 val_1 = val[val['kmeans'] == 1].drop(['sales']+list(set(val.columns).intersection(drop)), axis=1)
 val_2 = val[val['kmeans'] == 2].drop(['sales']+list(set(val.columns).intersection(drop)), axis=1)
 
-random_search(model_xgb, xgb_params, train_0, train_0_y, val_0, val_0_y)
+random_search(model_lgbm, lgbm_params, train_0, train_0_y, val_0, val_0_y, 0, name = 'lgbm')
+random_search(model_lgbm, lgbm_params, train_1, train_1_y, val_1, val_1_y, 1, name = 'lgbm')
+random_search(model_lgbm, lgbm_params, train_2, train_2_y, val_2, val_2_y, 2, name = 'lgbm')
 
 # best params load
 best_params = joblib.load('model_best_params.pkl')
 model_lgbm = LGBMRegressor(boosting_type='gbdt',params=best_params)
-
