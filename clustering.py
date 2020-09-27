@@ -19,11 +19,11 @@ def clustering(data,y_km,train_len,test=False):
     s = robustScaler.fit(np.array(X_train['sales']).reshape(-1,1))
     X_train['sales'] = robustScaler.transform(np.array(X_train['sales']).reshape(-1,1))
 
-    lgb = LGBMClassifier(n_estimators=2000,learning_rate=0.04,subsample=0.8,colsample_bytree=0.5,random_state=2020,objective='multiclass')
+    lgb = LGBMClassifier(n_estimators=1500,learning_rate=0.04,subsample=0.8,colsample_bytree=0.5,random_state=2020,objective='multiclass')
     
     if test:
-        lgb.fit(X_train.drop(['id','sales','is_mcode'],axis=1),y_km)
-        X_test['kmeans'] = lgb.predict(X_test.drop(['id','sales','is_mcode'],axis=1))
+        lgb.fit(X_train.drop(['id','sales']+['is_mcode','mcode_freq','mcode_freq_gr','mcode_sales_mean','mcode_sales_std','mcode_sales_med','mcode_sales_rank','mcode_order_mean','mcode_order_med','mcode_order_rank','mcode_order_std'],axis=1),y_km)
+        X_test['kmeans'] = lgb.predict(X_test.drop(['id','sales']+['is_mcode','mcode_freq','mcode_freq_gr','mcode_sales_mean','mcode_sales_std','mcode_sales_med','mcode_sales_rank','mcode_order_mean','mcode_order_med','mcode_order_rank','mcode_order_std'],axis=1))
         X_test.reset_index(drop=True,inplace=True)
         train = pd.concat([X_train,y_km],axis=1)
         train.reset_index(drop=True,inplace=True)
