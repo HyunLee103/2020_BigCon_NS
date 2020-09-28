@@ -8,10 +8,11 @@ from clustering import clustering
 from sklearn.model_selection import train_test_split
 from lightgbm import LGBMRegressor
 from xgboost import XGBRegressor
-from dim_reduction import train_AE,by_AE,by_PCA
+from dim_reduction import by_PCA
 import pandas as pd
 import seaborn as sns
 import numpy as np
+import joblib
 from sklearn.model_selection import KFold
 from lightgbm import LGBMClassifier
 from sklearn.preprocessing import RobustScaler
@@ -171,8 +172,10 @@ def final_test(train,test,k,robustScaler,col_sample=0.6,lr=0.04,iter=1500):
         test_tem_0 = test_tem[test_tem['is_mcode']==0]
         test_tem_1 = test_tem[test_tem['is_mcode']==1]
 
-        model_cluster0 = LGBMRegressor(subsample= 0.7, colsample_bytree= col_sample, learning_rate=lr,n_estimators=iter,random_state=2020)
-        model_cluster1 = LGBMRegressor(subsample= 0.7, colsample_bytree= col_sample, learning_rate=lr,n_estimators=iter,random_state=2020)
+        best_params = joblib.load(f'best_lgbm_params_{i+1}.pkl')
+
+        model_cluster0 = LGBMRegressor(subsample= 0.7, colsample_bytree= col_sample,**best_params,random_state=2020)
+        model_cluster1 = LGBMRegressor(subsample= 0.7, colsample_bytree= col_sample,**best_params,random_state=2020)
 
         model_cluster0.fit(train_tem.drop(drop0_+['id','sales','kmeans','is_mcode','mcode_freq','mcode_freq_gr','mcode_sales_mean','mcode_sales_std','mcode_sales_med','mcode_sales_rank','mcode_order_mean','mcode_order_med','mcode_order_rank','mcode_order_std'],axis=1),train_tem['sales'],verbose=False)
         pred_cluster0 = model_cluster0.predict(test_tem_0.drop(drop0_+['id','sales','kmeans','is_mcode','mcode_freq','mcode_freq_gr','mcode_sales_mean','mcode_sales_std','mcode_sales_med','mcode_sales_rank','mcode_order_mean','mcode_order_med','mcode_order_rank','mcode_order_std'],axis=1))
@@ -194,7 +197,6 @@ def final_test(train,test,k,robustScaler,col_sample=0.6,lr=0.04,iter=1500):
     return total_pred.sort_values(by='id').reset_index(drop=True), cluster_pred.sort_values(by='id').reset_index(drop=True)
 
 
-
 # excution
 if __name__=='__main__': 
     data_path = 'data/'
@@ -210,7 +212,8 @@ if __name__=='__main__':
     # 알아서 에러나는거 보고 빼던가 미리 카테고리 변수는 drop 리스트에서 빼 놓으셈
 
     # 그리고 변수 drop은 0,1 모델 기준으로 한거라 cluster 기준으로 랜덤서치하는 거랑 안 맞을 수 있음
-    # 혜린이한테는 일단 두 리스트 교집합으로 하라 했는데 더 좋은 방법 있음 생각해서 시도 ㄱㄱ 
+    # 혜린이한테는 일단 두 리스트 교집합으로 하라 했는데 더 좋은 방법 있음 생각해서 시도 ㄱㄱ
+
     drop1_  = ['min_sales_med',  'min_sales_std',  'day_sales_rank', 'min_sales_rank',
     'min_order_rank', 'cate_sales_rank', 'cate_order_rank', 'cate_order_med',
     'cate_sales_med', 'prime', 'min_order_std', 'min_sales_mean',
@@ -224,24 +227,16 @@ if __name__=='__main__':
     'day_order_med']
 
     # val 코드(test할 땐 실행 X)
-    tem_result,model0,model1 = predict(train,val,3,robustScaler,inference=True,iter=2000) 
+    # tem_result,model0,model1 = predict(train,val,3,robustScaler,inference=True,iter=2000) 
     
     # 테스트 코드 
     """
     total : 클러스터 안나누고 한번에 돌린 결과
     cluster : 클러스터별로 따로 모델돌린거 합친 결과
     """
-    total, cluster = final_test(train,val,3,robustScaler,0.6,0.04,2000) 
+    total, cluster = final_test(train,val,3,robustScaler,0.6,0.04,2000)
+    #total.to_csv('final_predict.csv')
 
-
-
-
-
-
-
-
-
- 
 
 # def feature_select(val,mcode,var,model):
 #     val_sel = val[val['is_mcode']==mcode]

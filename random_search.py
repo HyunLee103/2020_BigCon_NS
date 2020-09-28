@@ -5,7 +5,6 @@ import joblib
 # Machine Learning Modeling
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.ensemble.bagging import BaggingRegressor
-from xgboost import XGBRegressor
 from lightgbm import LGBMRegressor
 from catboost import CatBoostRegressor
 from sklearn.ensemble import BaggingRegressor, StackingRegressor
@@ -121,13 +120,12 @@ def random_search(model, params, X_train, y_train, X_val, y_val, i, name=''):
                                    n_jobs=2,
                                    random_state=2020)
 
-    # early_stop_params
-    fit_params={"early_stopping_rounds": 100,
-                # "eval_metrics" : "MAPE", 
-                "eval_set" : (X_val, y_val)
-                }
+    # fit_params={#"early_stopping_rounds": 100,
+    #              # "eval_metrics" : "MAPE", 
+    #              "eval_set" : (X_val, y_val)
+    #              }
 
-    search = rnd_search.fit(X_train, y_train, **fit_params)
+    search = rnd_search.fit(X_train, y_train)
 
     print('Best Estimator : {}'.format(search.best_estimator_))
     print('Best Params : {}'.format(search.best_params_))
@@ -180,9 +178,14 @@ val_0 = val[val['kmeans'] == 0].drop(['sales']+list(set(val.columns).intersectio
 val_1 = val[val['kmeans'] == 1].drop(['sales']+list(set(val.columns).intersection(drop)), axis=1)
 val_2 = val[val['kmeans'] == 2].drop(['sales']+list(set(val.columns).intersection(drop)), axis=1)
 
-random_search(model_catb, catb_params, train_0, train_0_y, val_0, val_0_y, 0, name = 'cat')
-random_search(model_catb, catb_params, train_1, train_1_y, val_1, val_1_y, 1, name = 'cat')
-random_search(model_catb, catb_params, train_2, train_2_y, val_2, val_2_y, 2, name = 'cat')
+#random_search(model_lgbm, lgbm_params, train_0, train_0_y, val_0, val_0_y, 0, name = 'lgbm')
+random_search(model_lgbm, lgbm_params, train_1, train_1_y, val_1, val_1_y, 1, name = 'lgbm')
+random_search(model_lgbm, lgbm_params, train_2, train_2_y, val_2, val_2_y, 2, name = 'lgbm')
+
+random_search(model_bagging, bagging_params, train_0, train_0_y, val_0, val_0_y, 0, name = 'bagging')
+random_search(model_bagging, bagging_params, train_0, train_0_y, val_0, val_0_y, 0, name = 'bagging')
+random_search(model_bagging, bagging_params, train_0, train_0_y, val_0, val_0_y, 0, name = 'bagging')
+
 
 # best params load
 best_params = joblib.load('model_best_params.pkl')
