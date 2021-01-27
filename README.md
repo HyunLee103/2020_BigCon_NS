@@ -23,7 +23,7 @@ Feature Engineering
     final_test(train, val, 3, hyperparmeters)
 
 ## Usage
-'data/'에 데이터 넣은 뒤
+'data/'에 데이터 압축 해제 한 뒤
 
     !python main.py 
 
