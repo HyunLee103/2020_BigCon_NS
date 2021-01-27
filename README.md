@@ -18,3 +18,8 @@ Feature Engineering
 학습 및 inference
     
     final_test(train, val, 3, hyperparmeters)
+
+## Usage
+'data/'에 데이터 넣고
+
+    !python main.py 
