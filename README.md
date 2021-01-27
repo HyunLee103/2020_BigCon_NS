@@ -3,11 +3,10 @@ NS Shop+편성데이터(NS홈쇼핑)를 활용하여 방송편성표에 따른 �
 
 
 ## Process
-날씨정보, 검색어 트랜드 정보 반영 전처리
 
+    # 날씨정보, 검색어 트랜드 정보 반영 전처리
     load_data(data_path, trend = True, weather = True)
-Feature Engineering
-
+    # Feature Engineering
     make_variable(perform_raw, test_raw, rating)
 이상치 제거 및 클러스터링
 
