@@ -20,6 +20,16 @@ Feature Engineering
     final_test(train, val, 3, hyperparmeters)
 
 ## Usage
-'data/'에 데이터 넣고
+'data/'에 데이터 넣은 뒤
 
     !python main.py 
+
+## Requirements
+- pandas
+- numpy
+- sklearn
+- joblib
+- seaborn
+- lightgbm
+
+## Contributor
