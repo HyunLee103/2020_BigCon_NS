@@ -8,4 +8,13 @@ NS Shop+편성데이터(NS홈쇼핑)를 활용하여 방송편성표에 따른 �
     load_data(data_path, trend = True, weather = True)
 Feature Engineering
 
-    make_variable(perform_raw,test_raw,rating)
+    make_variable(perform_raw, test_raw, rating)
+이상치 제거 및 클러스터링
+
+    preprocess(train_var, test_var, outlier_rate, # of cluster)
+학습 데이터 셋 형태 구축
+    
+    mk_trainset, clutering
+학습 및 inference
+    
+    final_test(train, val, 3, hyperparmeters)
