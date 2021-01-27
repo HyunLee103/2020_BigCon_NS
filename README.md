@@ -37,3 +37,7 @@ Feature Engineering
 - lightgbm
 
 ## Contributor
+- Hyun Lee(<https://github.com/HyunLee103>)  
+- Hyelin Nam(<https://github.com/HyelinNAM>)  
+- Kyojung Koo(<https://github.com/koo616>)  
+- Sanghyung Jung(<https://github.com/SangHyung-Jung>)  
