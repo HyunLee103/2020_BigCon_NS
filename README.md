@@ -1,6 +1,6 @@
 # NS 홈쇼핑 매출액 예측
 NS Shop+편성데이터(NS홈쇼핑)를 활용하여 방송편성표에 따른 판매실적을 예측하고, 최적 수익을 고려한 요일별/ 시간대별 / 카테고리별 편성 최적화 방안 제시
-[데이터분석분야_챔피언리그_결과보고서.pdf](https://github.com/koo616/2020_BigCon_NS/files/5877686/_._.pdf)
+[결과보고서.pdf](https://github.com/koo616/2020_BigCon_NS/files/5877686/_._.pdf)
 
 
 ## Process
